@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf8"/>
+		<title>test</title>
+		<script type="text/javascript" src="/utils/javascript/Loader.js" data-load="4"></script>
+		<script type="text/javascript" data-drive="/I:">if (typeof _jsUtilsLoader === "undefined") document.write(document.querySelector("script[data-load]")?.outerHTML.replace(/(?<=src=(["']))(?:\/\w:(?=\/))?([^\1]+)/, document.currentScript.dataset.drive + "$2"));</script>
+		<!--script type="text/javascript" src="0.type_assign.js"></script-->
+		<!--script type="text/javascript" src="4.order_filter.js"></script-->
+		<script type="text/javascript">
+		document.addEventListener('DOMContentLoaded', async () => {
+			const loaded = await _jsUtilsLoader.loaded;
+			console.log("loaded:", loaded);
+
+			const data = [{h1: "a", h2: 1}, {h1: "a", h2: 100}, {h1: "a", h2: 2}, {h1: "b", h2: 3}, {h1: "b", h2: "bouh", t:"string"}];
+			const so = new SortOrder(data, console.log).setLang("fr");
+			function onload() {
+				so.map(document.querySelector("div"), {dataAccessor: (d) => d.h1})
+				.map(document.querySelector("div:nth-of-type(2)"), {dataAccessor: "h2", typeAccessor: (d) => d.t ?? "numeric"}, SortOrder.NUMERIC, SortOrder.STRING, SortOrder.DATE);
+			}
+
+			function onload2() {
+				so.mapAll([
+					{htmlHeader: "div", dataAccessor: (d) => d.h1},
+					{htmlHeader:"div:nth-of-type(2)", dataAccessor: "h2", typeAccessor: (d) => d.t ?? "numeric", sortMethods: [SortOrder.NUMERIC, SortOrder.STRING, SortOrder.DATE]}
+				]);
+			}
+			
+			onload2();
+		});
+		</script>
+	</head>
+	<body>
+		<div>text</div>
+		<div>int</div>
+	</body>
+</html>

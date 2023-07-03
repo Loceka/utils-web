@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf8"/>
+		<title>Test Assign</title>
+		<style type="text/css"></style>
+		<script type="text/javascript" src="common.js"></script>
+		<script type="text/javascript">
+			function completeAssign(target, ...sources) {
+				sources.forEach(source => {
+					if (source) {
+						const descriptors = Object.keys(source).reduce((descriptors, key) => {
+							descriptors[key] = Object.getOwnPropertyDescriptor(source, key);
+							if (debug) console.debug(key, descriptors[key]);
+							return descriptors;
+						}, {});
+						Object.getOwnPropertySymbols(source).forEach(sym => {
+							const descriptor = Object.getOwnPropertyDescriptor(source, sym);
+							if (descriptor.enumerable) {
+								descriptors[sym] = descriptor;
+							}
+						});
+						Object.entries(defineReflectProperties(target, descriptors).status).forEach(([k, b]) => !b && console.warn("Assign could not override the previously set property '" + k + "' in object ", target));
+					}
+				});
+				return target;
+			}
+			
+			function defineReflectProperties(target, properties, {configurable=false, enumerable=true, force=false}={}) {
+				return Object.entries(properties).reduce((result, [k, v]) => {
+					result.status[k] = Reflect.defineProperty(target, k, force ? Object.assign({}, v, {configurable: configurable, enumerable: enumerable}) : Object.assign({configurable: configurable, enumerable: enumerable}, v));
+					return result;
+				}, {target: target, status: {}});
+			}
+			
+			function defineObjectProperties(target, properties, {configurable=false, enumerable=true, force=false}={}) {
+				Object.entries(properties).forEach(([k, v]) => {
+					Object.defineProperty(target, k, force ? Object.assign({}, v, {configurable: configurable, enumerable: enumerable}) : Object.assign({configurable: configurable, enumerable: enumerable}, v));
+				});
+				return target;
+			}
+			
+			const o1 = (() => {
+				let v = 0, w = 0, a, b;
+				
+				let res = {
+					prop : "prop",
+					obj : {},
+					arr : [],
+					func : function() { return this.prop +" & "+ v; },
+					arrow : () => this.prop +" & "+ v,
+					meth() { return this.prop +" & "+ v; },
+					get v() { return v; },
+					set v(value) { v = value; }
+				};
+				defineObjectProperties(res, {'w' : { get() { return w; }, set(value) { w = value; } }});
+				Object.defineProperties(res, {
+					'a': { get: function() { return a; } },
+					'b': { set: function(value) { b = value; } }
+				});
+
+				return res;
+			})();
+			const o1bis = (() => {
+				let w;
+				return defineObjectProperties({}, {'w' : { get() { return w; }, set(value) { w = value; } }});
+			})();
+			
+			let debug = true;
+			const o2 = completeAssign({}, o1, o1bis);
+			debug = false;
+			//Object.defineProperty(o2, 'w', { get() { return true; }, set(){} });
+			
+			function log(targets, properties) {
+				console.log(targets.map((t, i) => properties.reduce((log, p) => log + (log?", o":"o")+(i+1)+"."+p+" = " + (getType(t[p]).function ? t[p]() : t[p]), "")).join("\n"));
+			}
+			console.log(Object.getOwnPropertyDescriptor(o1, 'w'));
+			log([o1, o2], ["v", "w"]);
+			o1.v = 1;
+			o1.w = 1;
+			log([o1, o2], ["v", "w"]);
+			o2.v = 2;
+			o2.w = 2;
+			log([o1, o2], ["v", "w"]);
+			log([o1, o2], ["prop", "func", "arrow", "meth"]);
+			o1.prop = "value 1";
+			log([o1, o2], ["prop", "func", "arrow", "meth"]);
+			o2.prop = "value 2";
+			log([o1, o2], ["prop", "func", "arrow", "meth"]);
+			
+			(() => {
+				var o1 = { a: 1, b: 1, c: 1 };
+				var o2 = { b: 2, c: 2 };
+				var o3 = { c: 3 };
+				var v1 = 'abc';
+				var v2 = true;
+				var v3 = 10;
+				var v4 = Symbol('toto')
+
+				var obj = Object.assign({}, o1, o2, o3, v1, null, v2, undefined, v3, v4);
+				var obj2 = completeAssign({}, o1, o2, o3, v1, null, v2, undefined, v3, v4);
+				console.log("\t", obj, "\n\t", obj2);
+			})();
+		</script>
+	</head>
+	<body>
+	</body>
+</html>

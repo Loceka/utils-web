@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf8"/>
+		<title>test</title>
+		<!--script type="text/javascript" data-var="util" src="common.js"></script-->
+		<script type="text/javascript" data-var="util" src="0.type_assign.js"></script>
+		<script type="text/javascript" data-var="util" src="1.DOM.js"></script>
+		<script type="text/javascript" data-var="util" src="2.events.js"></script>
+		<script type="text/javascript" data-var="util" src="3.net.js"></script>
+		<script type="text/javascript">
+			function onMouseDown(e) { console.log("mousedown triggered", e); }
+			function onload() {
+				let onMD = util.addEvent(document.body, 'mousedown', onMouseDown, false);
+				util.addEvent(document.body, 'mouseup', false, function (e) {
+					console.log("mouseup triggered", e);
+				});
+				util.fireEvent(document.body, "mousedown", {test: "test"});
+				util.fireEvent(document.body, "mousedown", MouseEvent);				
+				
+				util.fireEvent(document.body, "mouseup");
+				util.fireEvent(document.body, "mouseup", "MouseEvent", {"cancelable": true});
+				
+				for (let e of document.querySelectorAll("div")) {
+					//util.addEvent(e, "mousemove", (e) => console.log(e.target.firstChild.data.trim(), getPosX(e), getPosY(e), elemPos(e.target), getElemBounds(e.target)));
+				}
+
+				let div = document.querySelector("div");
+				const rename = (({x: realX, ...rest}) => ({realX, ...rest}))
+				let rect = (div.getBoundingClientRect());
+				console.log(util.getElemBounds(div));
+			}
+			function elemPos(e) {
+				return {
+					x: getElemX(e),
+					y: getElemY(e)
+				}
+			}
+			console.log(util.objectToParamArray(["a", "b"], "p"));
+			console.log(util.objectToParamArray({"e":"e", "a":{"z":"26", y:25}, "b":[2, 3, 4, [5, 6], {"7": 7, 8:8}], f:() => true}, "param"));
+			console.log(util.objectToParamArray({"e":"e", "a":{"z":"26", y:25}, "b":[2, 3, 4, [5, 6], {"7": 7, 8:8}], f:() => true}));
+			
+			console.log("href info : ", util.hrefInfo("http://test.com").clone({addHash:["test"]}).build());
+		</script>
+	</head>
+	<body onload="onload()" style="padding-left: 50px">
+		<div style="position:absolute; width: 800px; height: 20px; background-color: #AAA;">div 1</div>
+		<div style="width: 800px; height: 30px; background-color: #AA0;">div 2</div>
+		<div style="position:relative; width: 1000px; height: 700px; background-color: #A0A;">container 1
+			<div style="width: 800px; height: 600px; background-color: #0AA;">div 3</div>
+			<div style="position:relative; width: 800px; height: 20px; background-color: #A00;">div 4</div>
+		</div>
+		<div style="position:relative; width: 1000px; height: 50px; background-color: #0A0;">container 2
+			<div style="position:absolute; width: 800px; height: 30px; background-color: #00A;">div 5</div>
+		</div>
+	</body>
+</html>
