@@ -18,8 +18,8 @@
 	};
 
 	return Object.assign(curScript, _.content({
-		async toBase64Url(url) {
-			return fetch(url)
+		async toBase64Url(url, fetchOpts) {
+			return fetch(url, fetchOpts)
 			.then(response => response.blob())
 			.then(blob => new Promise((resolve, reject) => {
 				const reader = new FileReader()
