@@ -22,6 +22,7 @@ const _jsUtilsLoader = ((varName = document?.currentScript?.dataset?.var, loadSc
 		"3": "3.net.js",
 		"4": "4.order_filter.js",
 		"5": "5.b64img.js",
+		"6": "6.CSS.js",
 	};
 
 	const scripts = {}, clientLoadedIds = {}, curDir = document.currentScript?.src?.replace(/[^\/]+$/, "");
