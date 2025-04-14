@@ -29,6 +29,18 @@
 			}
 			return customSheet;
         },
+		// Choose between dark and light mode themes (it still needs to be implemented CSS side by declaring variables in :root[data-theme="dark"]{} and :root[data-theme="light"]{})
+		selectTheme() {
+			const selectMode = (e) => document.documentElement.dataset.theme = e.matches ? "dark" : "light";
+			const matchDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)");
+			selectMode(matchDarkScheme);
+			matchDarkScheme?.addEventListener("change", selectMode);
+
+			const preferedMode = new URLSearchParams(window.location.search).get("theme");
+			if (["dark", "light"].includes(preferedMode)) {
+				selectMode({matches: "dark" === preferedMode});
+			}
+		},
         customRule(ruleSelector, content) {
 			const sheet = this.customStylesheet();
 			let selectedIndex;
