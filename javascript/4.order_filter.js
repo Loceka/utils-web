@@ -216,7 +216,7 @@
 						throw new TypeError("Incorrect value for " + propertyPath + " ; each entry must be created by SortMethod(obj). Value: '" + method + "'.");
 				}
 				function accessorToFunction(propertyPath, accessor, defaultValue) {
-					const func = _.u.getType(accessor).switch({unset: defaultValue, function: accessor, string: (data) => data[accessor], default: false});
+					const func = _.u.typeOf(accessor).switch({unset: defaultValue, function: accessor, string: (data) => data[accessor], default: false});
 					if (func === false) {
 						throw new TypeError("Incorrect value for " + propertyPath + ". Value: '" + accessor + "'.");
 					}
@@ -235,7 +235,7 @@
 					normalizedInput.types[typeName] = Object.assign({}, o, {dataAccessor: accessor});
 				});
 
-				const sortMethods = _.u.getType(sortUsing).switch({empty: undefined, array: sortUsing, default: [sortUsing]});
+				const sortMethods = _.u.typeOf(sortUsing).switch({empty: undefined, array: sortUsing, default: [sortUsing]});
 				if (sortMethods) {
 					sortMethods.forEach(m => {
 						checkMethod("input.sortUsing", m);
@@ -251,7 +251,7 @@
 				// ensure that typeAccessor is set if there are both "normal" and custom types, or if there is more than 1 "normal" type
 				const defType = customTypes.length ? (sortMethods ? false : customTypes) : (sortMethods.length === 1 ? [sortMethods[0].type] : false);
 				normalizedInput.typeAccessor = accessorToFunction("input.typeAccessor", typeAccessor, (defType && (() => defType)) );
-				normalizedInput.typeAccessor = (data) => _.u.getType(normalizedInput.typeAccessor(data)).switch(res => ({ empty: customTypes, array: res, default: [res] }));
+				normalizedInput.typeAccessor = (data) => _.u.typeOf(normalizedInput.typeAccessor(data)).switch(res => ({ empty: customTypes, array: res, default: [res] }));
 
 				return normalizedInput;
 			}

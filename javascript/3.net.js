@@ -75,7 +75,7 @@
 			return info;
 		},
 		objectToParamArray(obj, paramName, keys=[]) {
-			let type = _.u.getType(obj);
+			let type = _.u.typeOf(obj);
 			switch(type.emptyOrType) {
 				case "function":
 					return false;
@@ -89,7 +89,7 @@
 		},
 		toPHPSearchParams(params, keepEmptyParams = true) {
 			if (!(params instanceof FormData)) {
-				let type = _.u.getType(params);
+				let type = _.u.typeOf(params);
 				params = type.object ? this.objectToParamArray(params) : params;
 				type = type.object ? {array: true} : type;
 				params = type.empty ? "" : (type.string ? params : (type.array ? params.join("&") : null));
@@ -100,7 +100,7 @@
 			params = params ? new URLSearchParams(params).toString() : params;
 			return keepEmptyParams ? params : params?.replace(/(?<=&|^)[^&=]+=?(?:&|$)/g, "");
 		},
-		ajax(url, data, method = "GET", {json=false, jsonRequest=false, jsonAnswer=false, ...options}={}) {
+		ajax(url, {data, method="GET", json=false, jsonRequest=false, jsonAnswer=false, ...options}={}) {
 			method = method.toUpperCase();
 			let useSearch = method === "GET" || method === "DELETE";
 

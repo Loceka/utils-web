@@ -60,8 +60,8 @@
 					window.removeEventListener("test", parseInt, passive);
 				} catch(err) {}
 			}
-			let handlerType = _.u.getType(handler);
-			if ((handlerType.object || handlerType.boolean) && _.u.getType(opt).function) {
+			let handlerType = _.u.typeOf(handler);
+			if ((handlerType.object || handlerType.boolean) && _.u.typeOf(opt).function) {
 				[handler, opt] = [opt, handler];
 			}
 			el[add ? "addEventListener" : "removeEventListener"](type, handler, optSupported ? opt : (typeof opt === "boolean") ? opt : opt.capture);
@@ -74,7 +74,7 @@
 			return this.toggleEvent(false, el, type, handler, opt);
 		},
 		fireEvent(el, evType, evClass = "Event", opt = {}) {
-			let evClassType = _.u.getType(evClass);
+			let evClassType = _.u.typeOf(evClass);
 			if (!evClassType.string) {
 				opt = evClassType.object ? evClass : opt;
 				evClass = evClassType.function ? evClass.name : "Event";
@@ -86,9 +86,9 @@
 			el.dispatchEvent(evObj);
 		},
 		listEventListeners(elems, types) {
-			const elemType = _.u.getType(elems);
+			const elemType = _.u.typeOf(elems);
 			const selection = elemType.string ? document.querySelectorArray(elems) : (elemType.array ? elems : (elemType.object ? [elems] : [...document.querySelectorAll('*'), document, window]));
-			types = _.u.getType(types).array ? types : (types ? [types] : undefined);
+			types = _.u.typeOf(types).array ? types : (types ? [types] : undefined);
 			const windowTypes = (types || Object.keys(window)).filter(k => /^on[a-z]+$/.test(k));
 
 			let listeners = [];
