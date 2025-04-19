@@ -1,8 +1,11 @@
 /**
  * Script loader
  * 
- * Start the script with : [scriptName].launchScript().then(process);
- *
+ * Start the script with :
+ *   [varName].launchScript().then(process);
+ * or
+ *   await [varName].launchScript();
+ * 
  * @param {?(string|object)} [name=<script data-var>] : the property name in the current context (which probably is window) where this script should be written to.
  *     - if <varName> is an object, it will be used as the code container.
  *     - if <varName> is undefined or null, the code is directly injected in the current context (window or this) instead of being embedded in a single object.
@@ -46,7 +49,7 @@ const _jsUtilsLoader = ((varName = document?.currentScript?.dataset?.var, loadSc
 	const scripts = {}, clientLoadedIds = {}, curDir = document.currentScript?.src?.replace(/[^\/]+$/, "");
 	let dependencies = {}, startCB = [], loadCB = [];
 
-	const dependenciesLoaded = new Promise(resolve => {
+	const scriptLoaded = new Promise(resolve => {
 		if (loadScripts) {
 			window.setTimeout(function() {
 				loadScripts.split(/\s*,\s*/g).forEach(clientLoadScript);
@@ -66,9 +69,11 @@ const _jsUtilsLoader = ((varName = document?.currentScript?.dataset?.var, loadSc
 	});
 
 	const waitForHtml = new Promise(resolve => {
-		if (document.body) {
+		if (document?.body) {
 			resolve();
-		} else if (window.addEventListener) {
+		} else if (document?.addEventListener) {
+			document.addEventListener('DOMContentLoaded', resolve, {capture:true, once:true, passive:true});
+		} else if (window?.addEventListener) {
 			window.addEventListener('load', resolve, {capture:true, once:true, passive:true});
 		}
 	});
@@ -129,11 +134,11 @@ const _jsUtilsLoader = ((varName = document?.currentScript?.dataset?.var, loadSc
 
 	return Object.assign(curScript, {
 		Script: Script,
-		dependenciesLoaded: dependenciesLoaded,
+		scriptLoaded: scriptLoaded,
 		launchScript() {
 			startCB.forEach(cb => cb());
 			startCB = undefined;
-			return waitForHtml.then(() => dependenciesLoaded.then(() => {
+			return waitForHtml.then(() => scriptLoaded.then(() => {
 				loadCB.forEach(cb => cb());
 				loadCB = undefined;
 			}));
