@@ -51,17 +51,19 @@
 			type.unset = type.null || type.undefined;
 			type.set = !type.unset;
 			type.boolean = objToString === "[object Boolean]";
-			type.number = objToString === "[object Number]";
+			type.anyNumber = objToString === "[object Number]";
+			type.number = type.anyNumber && !isNaN(v);
+			type.NaN = type.anyNumber && isNaN(v);
 			type.string = objToString === "[object String]";
 			type.anyObject = !type.unset && typeof v === "object";
 			type.array = !type.unset && Array.isArray(v);
 			type.collection = type.array || (!type.unset && !type.string && (typeof v.length === "number") && Array.from(v, (c, i) => c || v.hasOwnProperty(i)).every(a => a));
 			type.function = typeof v === "function";
-			type.object = type.anyObject && !type.boolean && !type.number && !type.string && !type.array && !type.function;
+			type.object = type.anyObject && !type.boolean && !type.anyNumber && !type.string && !type.array && !type.function;
 			type.empty = type.unset || v === "" || (type.anyObject && (v.length === 0 || Object.keys(v).length === 0)); // use getOwnPropertyNames instead of keys?
 			type.filled = !type.empty;
 
-			const allowedTypes = ["unset", "boolean", "number", "string", "array", "function", "object"];
+			const allowedTypes = ["unset", "boolean", "number", "NaN", "string", "array", "function", "object"];
 			type.type = Object.entries(type).find(([typeName, ofType]) => ofType && allowedTypes.includes(typeName))[0];
 			type.emptyOrType = type.empty ? "empty" : type.type;
 
