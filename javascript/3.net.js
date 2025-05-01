@@ -40,30 +40,6 @@
 	});
 
 	return Object.assign(curScript, _.content({
-		// listen for url parameters from both search query and hash
-		listenURLParams(callback, ...paramNames) {
-			const values = {};
-
-			function readLocation() {
-				let changed = {}, old = {};
-				const params = new URLSearchParams([...[...new URLSearchParams(window.location.hash.substring(1)).entries()], ...[...new URLSearchParams(window.location.search).entries()]]);
-				paramNames.forEach(p => {
-					const val = params.getAll(p);
-					if (val.some((v, i) => v !== values[i])) {
-						[changed[p], old[p]] = [val, values[p]].map(arr => (!arr || arr.length === 0) ? undefined : arr.length === 1 ? arr[0] : arr);
-						values[p] = val;
-					}
-				});
-				if (Object.keys(changed).length) {
-					if (paramNames.length === 1) {
-						[changed, old] = [changed[paramNames[0]], old[paramNames[0]]];
-					}
-					callback(changed, old);
-				}
-			};
-			window.addEventListener('hashchange', readLocation);
-			readLocation();
-		},
 		hrefInfo(container, newTab) {
 			const self = this;
 			function mapToStr(prefix, map) {

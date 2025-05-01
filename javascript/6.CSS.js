@@ -39,7 +39,73 @@
 		"u": 0
 	});
 
-	let customSheet;
+	const s = { param: "theme", fromHash: true, fromQuery: true, fromStorage: true, saveStorage: false, priority: ["fromHash", "fromQuery", "fromStorage"], themes: ["dark", "light"] };
+	const theme = {
+		firstCall: true,
+		settings: s,
+		theme(value) {
+			return this.settings.themes.includes(value) && value;
+		},
+		cycleThemes() {
+			const length = this.settings.themes.length, i = this.settings.themes.indexOf(this.selectedTheme());
+			return this.settings.themes[(length + i + 1) % length];
+		},
+		storageKey() { return ((this.settings.storagePrefix ?? "") + ".").replace(/(?<=^|\.)\.$/, "") + this.settings.param; },
+		selectedTheme() {
+			return document.documentElement.dataset[this.settings.param];
+		},
+		selectMode(eventOrTheme) {
+			if (eventOrTheme) {
+				const theme = u.typeOf(eventOrTheme).string ? eventOrTheme : eventOrTheme.matches ? "dark" : "light";
+				if (theme !== this.selectedTheme()) {
+					document.documentElement.dataset[this.settings.param] = theme;
+					if (this.settings.saveStorage) {
+						window.localStorage?.setItem(this.storageKey(), theme);
+					}
+					this.settings.callback?.(theme);
+				}
+			}
+		},
+		readLocalStorage(obj = {}) {
+			const value = this.settings.fromStorage && window.localStorage?.getItem(this.storageKey());
+			return Object.assign(obj, {fromStorage: this.theme(value)});
+		},
+		readLocation(eventOrObject = {}) {
+			const hashParams = this.settings.fromHash && new URLSearchParams(window.location.hash.substring(1));
+			if (event instanceof Event) {
+				this.selectMode(this.theme(hashParams?.get(this.settings.param)));
+			} else {
+				const queryParams = this.settings.fromQuery && new URLSearchParams(window.location.search);
+				return Object.assign(eventOrObject, {fromHash: this.theme(hashParams?.get(this.settings.param)), fromQuery: this.theme(queryParams?.get(this.settings.param))});
+			}
+		},
+		init({ toggle, callback = s.callback, param = s.param, fromHash = s.fromHash, fromQuery = s.fromQuery, fromStorage = s.fromStorage, storagePrefix = s.storagePrefix, saveStorage = s.saveStorage, priority = s.priority, themes = s.themes } = {}) {
+			const oldSettings = {...this.settings};
+			Object.assign(this.settings, { param:param, fromHash:fromHash, fromQuery:fromQuery, fromStorage:fromStorage, storagePrefix:storagePrefix, saveStorage:saveStorage, priority:priority, themes:themes, callback:callback });
+			if (this.firstCall) {
+				const matchDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)");
+				matchDarkScheme?.addEventListener("change", this.selectMode.bind(this));
+				this.selectMode(matchDarkScheme);
+
+				window.addEventListener('hashchange', this.readLocation.bind(this));
+			}
+
+			if (this.firstCall || ["param", "fromHash", "fromQuery", "fromStorage", "storagePrefix", "priority", "themes"].find(k => !u.equal(oldSettings[k], this.settings[k]))) {
+				const read = this.readLocation(this.readLocalStorage());
+				this.selectMode(read[this.settings.priority.find(source => read[source])]);
+			}
+
+			toggle = u.typeOf(arguments[0]).switch(value => ({string: value, boolean: value, default: toggle}));
+			if (toggle) {
+				this.selectMode(toggle === true ? this.cycleThemes() : this.theme(toggle));
+			}
+
+			this.firstCall = false;
+			return { theme: this.selectedTheme(), toggle: toggle, ...this.settings };
+		},
+	};
+
+	let customSheet, themeSet = false;
 	return Object.assign(curScript, _.content({
         customStylesheet(stylesheetId = "customAddedStylesheet") {
 			if (!customSheet) {
@@ -48,23 +114,27 @@
 			}
 			return customSheet;
         },
-		// Choose between dark and light mode themes (it still needs to be implemented CSS side by declaring variables in :root[data-theme="dark"]{} and :root[data-theme="light"]{})
-		selectTheme(paramName = "theme") {
-			const selectMode = (e) => document.documentElement.dataset[paramName] = e.matches ? "dark" : "light";
-			const matchDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)");
-			selectMode(matchDarkScheme);
-			matchDarkScheme?.addEventListener("change", selectMode);
-
-			function fromLocation() {
-				const params = new URLSearchParams([...[...new URLSearchParams(window.location.hash.substring(1)).entries()], ...[...new URLSearchParams(window.location.search).entries()]]);
-				const preferedMode = params.get(paramName);
-				if (["dark", "light"].includes(preferedMode)) {
-					selectMode({matches: "dark" === preferedMode});
-				}
-			}
-			window.addEventListener('hashchange', fromLocation);
-			fromLocation();
-		},
+		/*
+		 * Choose between dark and light mode themes (it still needs to be implemented CSS side by declaring variables in :root[data-theme="dark"]{} and :root[data-theme="light"]{})
+		 *
+		 * This function takes only 1 argument, which can be of different types :
+		 * - string : the theme to set
+		 * - boolean : cycle between themes
+		 * - object settings = {
+		 *     toggle        : same as string/boolean argument
+		 *     callback      : a function to callback when the theme changes
+		 *     param         : (default: "theme") the name of the parameter to use in HTML/CSS (data-[param] set on <html>) and to search in URL and localStorage
+		 *     fromHash      : (default: true) search for theme in URL#hash values (using [param] as key). It will also listen for changes in the URL hash
+		 *     fromQuery     : (default: true) search for theme in URL?query values (using [param] as key)
+		 *     fromStorage   : (default: true) search for theme in localStorage values (using [storagePrefix].[param] as key)
+		 *     storagePrefix : (default: unset) add a prefix to [param] in localStorage for search and save purposes
+		 *     saveStorage   : (default: false) save the theme in localStorage (using [storagePrefix].[param] as key)
+		 *     priority      : (default: ["fromHash", "fromQuery", "fromStorage"]) the priority of the sources : the first source found is used.
+		 *     themes        : (default: ["dark", "light"]) the possible themes
+		 * }
+		 */
+		selectTheme: theme.init.bind(theme),
+		selectedTheme: theme.selectedTheme.bind(theme),
         customRule(ruleSelector, content) {
 			const sheet = this.customStylesheet();
 			let selectedIndex;
