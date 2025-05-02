@@ -36,51 +36,106 @@
 		content(content) { return content; }
 	};
 
-	const s = { useReturnValue: false, arrayResult: false, fromHashChanged: true, fromHash: true, fromQuery: true, fromStorage: true, saveStorage: false, priority: ["fromHashChanged", "fromHash", "fromQuery", "fromStorage"] };
+	//
+	// Read Parameters
+	//
+	const globalSettings = { useReturnValue: false, arrayResult: false, fromHashChanged: true, fromHash: true, fromQuery: true, fromStorage: true, saveStorage: false, priority: ["fromHashChanged", "fromHash", "fromQuery", "fromStorage"] };
+	Object.setPrototypeOf(globalSettings, {
+		sources: {},
+		sourceAllowed(sourceName) { return this[sourceName]; },
+		addSource({before = "*", after, sourceName, valueGetter, eventName, eventTarget} = {}) {
+			const registerEvent = eventName ? () => eventTarget.addEventListener(eventName, readParams.retrieveValues.bind(readParams, sourceName)) : undefined;
+			const getter = (param, context, eventSourceName, event) => (!eventName || (eventSourceName === sourceName)) && readParams.valueOf(param, valueGetter(param, context, event));
+
+			this.sources[sourceName] = { source: sourceName, getter };
+
+			if (before || after) {
+				let index = this.priority.indexOf(after ?? before);
+				index = (index === -1) ? (after ? this.priority.length : 0 ) : index + (after ? 1 : 0);
+				this.priority.splice(index, 0, sourceName);
+				this[sourceName] = true;
+
+				registerEvent?.();
+			} else if (before === null) {
+				// should only be used by default sources : delay the event registering and don't add them to the priority list and allowed sources
+				this.sources[sourceName].registerEvent = registerEvent;
+			}
+		},
+	});
+
+	Object.entries({
+		fromStorage: {g: (param, c) => c.storage?.getItem(readParams.storageKey(param)) },
+		fromQuery: {g: (param, c) => c.query?.get(param) },
+		fromHash: {g: (param, c) => c.hash?.get(param) },
+		fromHashChanged: {g: (param, c) => settings.fromHash && c.hash?.get(param), ev: "hashchange", el: window},
+	}).forEach(([sourceName, {g:valueGetter, ev:eventName, el:eventTarget}]) => globalSettings.addSource({before: null, sourceName, valueGetter, eventName, eventTarget}));
+
 	readParams = {
 		firstCall: true,
 		params: {},
 		callbacks: {},
 		actions: {},
+		getSettings(params) {
+			return curScript.typeOf(params).smartSwitch({
+				unset: globalSettings,
+				string: () => (this.params[params] ?? this.addParam(params)).settings,
+				array: () => Object.fromEntries(this.params.map(param => [param, param ? (this.params[param] ?? this.addParam(params)).settings : globalSettings])),
+			});
+		},
 		valueOf(param, value) {
 			return (!this.params[param].settings.possibleValues || this.params[param].settings.possibleValues.includes(value)) && value;
 		},
 		storageKey(param) { return ((this.params[param].settings.storagePrefix ?? "") + ".").replace(/(?<=^|\.)\.$/, "") + param; },
-		addParam(param, settings, callback) {
-			const previousCbId = this.params[param]?.cbId;
+		addParam(param, settings = {}, callback) {
+			let p = this.params[param];
+			const previousCbId = p?.cbId;
 			let cbId = Object.keys(this.callbacks).find(k => this.callbacks[k].func === callback);
+
+			if ((callback !== undefined) && previousCbId && previousCbId !== cbId) {
+				// remove old associated callback
+				this.removeParam(param, previousCbId);
+			}
+
 			if (!cbId && callback) {
 				// new callback
-				cbId = Math.max(0, ...Object.keys(this.callbacks)) + 1;
+				cbId = String(Math.max(0, ...Object.keys(this.callbacks)) + 1);
 				this.callbacks[cbId] = {func: callback, paramList: [param]};
 			} else if (cbId && (previousCbId !== cbId)) {
 				// add current parameter to the existing callback param list
 				this.callbacks[cbId].paramList.push(param);
 			}
 
-			if (previousCbId && previousCbId !== cbId) {
-				// remove old associated callback
-				const prevCbParams = this.callbacks[previousCbId]?.paramList;
-				prevCbParams?.splice(prevCbParams.indexOf(param), 1);
+			if (p) {
+				Object.assign(p.settings, settings);
+				p.cbId = cbId;
+			} else {
+				Object.setPrototypeOf(settings, globalSettings);
+				Object.assign(settings, globalSettings, settings);
+				p = this.params[param] = {settings, cbId};
 			}
-
-			this.params[param] = {settings, cbId};
+			return p;
 		},
-		removeParam(param) {
-			const cbId = this.params[param].cbId;
+		removeParam(param, onlyCbId) {
+			const cbId = onlyCbId ?? this.params[param].cbId;
 			const cbParams = this.callbacks[cbId]?.paramList;
 			cbParams?.splice(cbParams.indexOf(param), 1);
 			if (cbParams?.length === 0) {
 				delete this.callbacks[cbId];
 			}
-			delete this.params[param];
+			if (!onlyCbId) {
+				delete this.params[param];
+			}
 		},
-		storeCallback(param, values, oldValues, cbId, useReturnValue) {
-			const key = useReturnValue ? "result" : cbId;
-			const entry = this.actions[key] = this.actions[key] ?? ({ values: {}, oldValues: {}, changedParams: [] });
-			entry.values[param] = values;
-			entry.oldValues[param] = oldValues;
-			entry.changedParams.push(param);
+		storeCallback(param, values, oldValues, cbId, useReturnValue, fromEvent) {
+			const keys = fromEvent ? [cbId] : (useReturnValue ? ["result"] : ["result", cbId]);
+			for (const key of keys) {
+				if (key) {
+					const entry = this.actions[key] = this.actions[key] ?? ({ values: {}, oldValues: {}, changedParams: [] });
+					entry.values[param] = values;
+					entry.oldValues[param] = oldValues;
+					entry.changedParams.push(param);
+				}
+			}
 		},
 		fireCallbacks(inputParams) {
 			let result;
@@ -88,7 +143,7 @@
 				const cbInfo = cbId === "result" ? ({func: (...args) => result = args, paramList: inputParams}) : this.callbacks[cbId];
 				let args = [values, oldValues, changedParams];
 				if ((cbInfo.paramList?.length === 1) && (changedParams.length === 1)) {
-					// if there is only 1 parameter associated to this callback, directly use the values
+					// if there is only 1 parameter associated with this callback, directly use the values
 					args[0] = values[changedParams[0]];
 					args[1] = oldValues[changedParams[0]];
 				}
@@ -98,23 +153,23 @@
 			this.actions = {};
 			return result;
 		},
-		paramValue(param, storage, query, hash, event) {
+		paramValue(param, context, eventSourceName, event) {
 			const p = {values:oldValues, settings, cbId} = this.params[param];
 			if (oldValues) {
 				oldValues.fromHashChanged = oldValues.fromHashChanged === undefined ? oldValues.fromHash : oldValues.fromHashChanged;
 			}
 			const v = settings.priority.reduce((o, source) => (o[source] = oldValues?.[source], o), {});
-			if (event instanceof HashChangeEvent) {
-				v.fromHashChanged = settings.fromHashChanged && settings.fromHash && this.valueOf(param, hash?.get(param));
-			} else {
-				v.fromStorage = settings.fromStorage && this.valueOf(param, storage?.getItem(this.storageKey(param)));
-				v.fromQuery = settings.fromQuery && this.valueOf(param, query?.get(param));
-				v.fromHash = settings.fromHash && this.valueOf(param, hash?.get(param));
-			}
-			if (!curScript.equal(oldValues, v)) {
-				p.values = v;
+
+			Object.values(settings.sources).filter(({source}) => settings[source]).forEach(({source, getter}) => {
+				v[source] = getter(param, context, eventSourceName, event);
+			});
+
+			let modified = !curScript.equal(oldValues, v);
+			if (!event || modified) {
+				if (modified) p.values = v;
+
 				const [cur, old] = [v, oldValues]
-					.map(array => settings.priority.map(source => array?.[source]).filter((value, i, a) => curScript.typeOf(value).filled && (a.indexOf(value) === i))) // return unique defined values
+					.map(array => settings.priority.map(source => array?.[source]).filter((value, i, a) => value && (a.indexOf(value) === i))) // return unique defined values
 					.map(array => settings.arrayResult ? array : array?.[0]); // return an array or a single value depending on the arrayResult setting
 
 				const singleValue = Array.isArray(cur) ? cur[0] : cur;
@@ -122,31 +177,36 @@
 					window.localStorage?.setItem(this.storageKey(param), singleValue);
 				}
 
-				this.storeCallback(param, cur, old, cbId, !(event instanceof Event) && settings.useReturnValue);
+				modified = !curScript.equal(cur, old);
+				if (!event || modified) {
+					this.storeCallback(param, cur, old, (modified ? cbId : undefined), settings.useReturnValue, event instanceof Event);
+				}
 			}
 		},
-		retrieveValues(eventOrInputParams) {
-			const [event, inputParams] = eventOrInputParams instanceof Event ? [eventOrInputParams] : [,eventOrInputParams];
+		retrieveValues(eventOrInputParams, event) {
+			const [eventSourceName, inputParams] = Array.isArray(eventOrInputParams) ? [,eventOrInputParams] : [eventOrInputParams];
 			const storage = window.localStorage;
 			const query = new URLSearchParams(window.location.search);
 			const hash = new URLSearchParams(window.location.hash.substring(1));
-			(inputParams ?? Object.keys(this.params)).forEach(param => this.paramValue(param, storage, query, hash, event));
+			(inputParams ?? Object.keys(this.params)).forEach(param => this.paramValue(param, {storage, query, hash}, eventSourceName, event));
 
 			return this.fireCallbacks(inputParams);
 		},
-		init({ params, removeParams, callback = s.callback, useReturnValue = s.useReturnValue, arrayResult = s.arrayResult, fromHashChanged = s.fromHashChanged, fromHash = s.fromHash, fromQuery = s.fromQuery, fromStorage = s.fromStorage, saveStorage = s.saveStorage, storagePrefix = s.storagePrefix, priority = s.priority, possibleValues = s.possibleValues } = {}) {
+		init({ params, removeParams, callback = globalSettings.callback, ...settings } = {}) {
 			// Read arguments
 			const args = [...arguments];
 			params = curScript.typeOf(params).string ? [params] : params;
 			removeParams = curScript.typeOf(removeParams).string ? [removeParams] : removeParams;
 			if (!curScript.typeOf(args[0]).object || args.length > 1) {
-				let customCB = (callback === s.callback ? undefined : callback), customParams = [], error = false;
+				settings = {}; // "...settings" captures string and arrays
+				let customCB = callback === globalSettings.callback ? undefined : callback, customParams = [], error = false;
 				args.forEach((arg, i) => {
-					curScript.typeOf(arg).applySwitch({
+					curScript.typeOf(arg).smartSwitch({
 						function: (v) => { error |= customCB !== undefined; customCB = v; },
 						string: (v) => customParams.push(v),
 						array: (v) => { error |= (customParams.length > 0 || v.some(o => !curScript.typeOf(o).string)); customParams = v; },
 						object: () => error |= i !== 0,
+						unset: undefined,
 						default: () => error |= true,
 					});
 				});
@@ -156,14 +216,14 @@
 					return;
 				} else {
 					params = params ? params.concat(customParams) : customParams;
-					callback = customCB;
+					callback = customCB ?? globalSettings.callback;
 				}
 			}
 
-			const settings = { useReturnValue, arrayResult, fromHashChanged, fromHash, fromQuery, fromStorage, saveStorage, storagePrefix, priority, possibleValues };
+			// settings.associatedParams = "(" + params.join(",") + ")"; // add "name" for debug purposes
 			if ((!params || params.length === 0) && (!removeParams || removeParams.length === 0)) {
 				// save default settings
-				Object.assign(s, settings);
+				Object.assign(globalSettings, settings, {callback});
 			}
 
 			// remove parameters
@@ -171,7 +231,7 @@
 
 			if (this.firstCall) {
 				this.firstCall = false;
-				window.addEventListener('hashchange', this.retrieveValues.bind(this));
+				Object.values(globalSettings.sources).forEach(source => source.registerEvent?.());
 			}
 
 			if (params) {
@@ -181,6 +241,9 @@
 		},
 	};
 
+	//
+	// TypeOf
+	//
 	const typeOfPrototype = {
 		apply(callback) { return callback(this, this.v); },
 		switch(options) { const opts = (typeof options === "function") ? options(this.v, this) : options; return Object.entries(opts).find(([k]) => this[k])?.[1]; },
@@ -268,10 +331,10 @@
 		 *   - currentValue (or list of values if arrayResult is [true])
 		 *   - oldValue (or list of values if arrayResult is [true])
 		 *   - the list of parameters that changed
-		 * If several parameters are associated to the same callback function, the first 2 arguments are an associative object instead : { parameter : currentValue(s) }, { parameter : oldValue(s) }
+		 * If several parameters are associated with the same callback function, the first 2 arguments are an associative object instead : { parameter : currentValue(s) }, { parameter : oldValue(s) }
 		 *
 		 * When the function is called without either [params] or [removeParams] arguments, the input settings override the default settings values.
-		 * Otherwise, the input settings are associated to the specified [params].
+		 * Otherwise, the input settings are associated with the specified [params].
 		 *
 		 * This function can also be called with:
 		 *   - a function, that will be considered as the callback function (only 1 function argument is allowed)
@@ -279,5 +342,9 @@
 		 *   - the settings object as first parameter in addition to the previous arguments, that will be used according to the above decription
 		 */
 		readParameters: readParams.init.bind(readParams),
+		/*
+		 * Use readParametersSettings().addSource(...) to add a new source associated with the parameter
+		 */
+		readParametersSettings: readParams.getSettings.bind(readParams),
 	}));
 })();
