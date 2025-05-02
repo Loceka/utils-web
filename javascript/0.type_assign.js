@@ -73,7 +73,8 @@
 	readParams = {
 		firstCall: true,
 		params: {},
-		callbacks: {},
+		defaultCbId: "-1",
+		callbacks: {"-1": {func:undefined, paramList: []}},
 		actions: {},
 		getSettings(params) {
 			return curScript.typeOf(params).smartSwitch({
@@ -89,7 +90,7 @@
 		addParam(param, settings = {}, callback) {
 			let p = this.params[param];
 			const previousCbId = p?.cbId;
-			let cbId = Object.keys(this.callbacks).find(k => this.callbacks[k].func === callback);
+			let cbId = Object.keys(this.callbacks).find(k => (k !== this.defaultCbId) && this.callbacks[k].func === callback);
 
 			if ((callback !== undefined) && previousCbId && previousCbId !== cbId) {
 				// remove old associated callback
@@ -105,6 +106,7 @@
 				this.callbacks[cbId].paramList.push(param);
 			}
 
+			cbId = callback === undefined ? (previousCbId ?? this.defaultCbId) : cbId;
 			if (p) {
 				Object.assign(p.settings, settings);
 				p.cbId = cbId;
@@ -117,10 +119,12 @@
 		},
 		removeParam(param, onlyCbId) {
 			const cbId = onlyCbId ?? this.params[param].cbId;
-			const cbParams = this.callbacks[cbId]?.paramList;
-			cbParams?.splice(cbParams.indexOf(param), 1);
-			if (cbParams?.length === 0) {
-				delete this.callbacks[cbId];
+			if (cbId && (cbId !== this.defaultCbId)) {
+				const cbParams = this.callbacks[cbId]?.paramList;
+				cbParams?.splice(cbParams.indexOf(param), 1);
+				if (cbParams?.length === 0) {
+					delete this.callbacks[cbId];
+				}
 			}
 			if (!onlyCbId) {
 				delete this.params[param];
@@ -147,7 +151,7 @@
 					args[0] = values[changedParams[0]];
 					args[1] = oldValues[changedParams[0]];
 				}
-				cbInfo.func(...args);
+				cbInfo.func?.(...args);
 			});
 
 			this.actions = {};
@@ -192,14 +196,14 @@
 
 			return this.fireCallbacks(inputParams);
 		},
-		init({ params, removeParams, callback = globalSettings.callback, ...settings } = {}) {
+		init({ params, removeParams, callback, ...settings } = {}) {
 			// Read arguments
 			const args = [...arguments];
 			params = curScript.typeOf(params).string ? [params] : params;
 			removeParams = curScript.typeOf(removeParams).string ? [removeParams] : removeParams;
 			if (!curScript.typeOf(args[0]).object || args.length > 1) {
 				settings = {}; // "...settings" captures string and arrays
-				let customCB = callback === globalSettings.callback ? undefined : callback, customParams = [], error = false;
+				let customCB = callback, customParams = [], error = false;
 				args.forEach((arg, i) => {
 					curScript.typeOf(arg).smartSwitch({
 						function: (v) => { error |= customCB !== undefined; customCB = v; },
@@ -216,14 +220,15 @@
 					return;
 				} else {
 					params = params ? params.concat(customParams) : customParams;
-					callback = customCB ?? globalSettings.callback;
+					callback = customCB;
 				}
 			}
 
 			// settings.associatedParams = "(" + params.join(",") + ")"; // add "name" for debug purposes
 			if ((!params || params.length === 0) && (!removeParams || removeParams.length === 0)) {
 				// save default settings
-				Object.assign(globalSettings, settings, {callback});
+				Object.assign(globalSettings, settings, { callback: callback === undefined ? globalSettings.callback : callback });
+				this.callbacks[this.defaultCbId].func = globalSettings.callback;
 			}
 
 			// remove parameters
