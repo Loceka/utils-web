@@ -1,0 +1,111 @@
+#results {
+	display: grid;
+	grid-template-columns: repeat(2, max-content);
+}
+
+.toggle {
+	font-style: italic;
+	color: blue;
+	cursor: pointer;
+}
+
+.hidden > *:not(label) {
+	display: none;
+}
+
+.group {
+	display: grid;
+	grid-column: 1/span 2;
+	grid-template-columns: subgrid;
+}
+
+.group label {
+	grid-column: 1/span 2;
+	font-weight: bold;
+	font-family: monospace;
+	min-width: 2ch;
+	width: max-content;
+	margin: 1px 0;
+	cursor: pointer;
+}
+
+.result {
+	display: grid;
+	grid-column: 1/span 2;
+	grid-template-areas:
+		"step message"
+		"step expected"
+		"step actual"
+	;
+	grid-template-columns: subgrid;
+	grid-template-rows: repeat(3, max-content);
+	margin: 1px 0;
+}
+
+.hideSuccessful .success {
+	display: none;
+}
+
+.group, .grouped {
+	padding-left: 2ch;
+}
+
+#results > .group, #results > .grouped {
+	padding-left: 0;
+}
+
+.result .step {
+	grid-area: step;
+	grid-column: 1;
+	font-style: italic;
+	font-family: monospace;
+	padding-right: 0.5rem;
+	margin-right: 2px;
+}
+
+.group label, .result > * {
+	padding: 3px;
+	color: #0e410e;
+	background-color: #b8ffb8;
+}
+
+.group:has(.error) > label, .result.error > * {
+	color: #5f0505;
+	background-color: #ffc9c9;
+}
+
+.result .message {
+	grid-area: message;
+	grid-column: 2;
+	color: #9b0000;
+}
+
+.result .actual {
+	grid-area: actual;
+	grid-column: 2;
+	font-family: monospace;
+	color: #100d0d;
+}
+
+.result .expected {
+	grid-area: expected;
+	grid-column: 2;
+	font-family: monospace;
+	color: #100d0d;
+}
+
+.actual:before, .expected:before {
+	display: inline-flex;
+	align-items: center;
+	justify-content: end;
+	color: blue;
+	font-size: 0.9em;
+	width: 11ch;
+	white-space: pre;
+}
+.actual:before {
+	content: "actual : ";
+}
+.expected:before {
+	content: "expected : ";
+}

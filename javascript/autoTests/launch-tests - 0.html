@@ -1,0 +1,713 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf8"/>
+		<title></title>
+		<link rel="stylesheet" href="tests.css" />
+		<script type="text/javascript" src="shared.js"></script>
+		<script type="text/javascript" src="/utils/javascript/0.type_assign.js" data-var="util"></script>
+		<script type="text/javascript" src="/utils/javascript/Loader.js" data-load="0"></script>
+		<!--
+		<script type="text/javascript" src="/utils/javascript/Loader.js" data-load="4"></script>
+		<script type="text/javascript" data-drive="/I:">if (typeof _jsUtilsLoader === "undefined") document.write(document.querySelector("script[data-load]")?.outerHTML.replace(/(?<=src=(["']))(?:\/\w:(?=\/))?([^\1]+)/, document.currentScript.dataset.drive + "$2"));</script>
+		-->
+		<script type="text/javascript">
+
+			function testEqual() {
+				testedFeature = "equal";
+
+				doTest("undefined", testAssert, undefined, undefined, "values should be equal");
+				doTest("null", testAssert, null, null, "values should be equal");
+				doTest("NaN", testAssert, NaN, Number("a"), "values should be equal");
+				doTest("number", testAssert, 1, new Number(1.0), "values should be equal");
+				doTest("string", testAssert, "a", new String("a"), "values should be equal");
+				doTest("array", testAssert, ["a", "b"], Array.from(["a", "b"]), "values should be equal");
+				doTest("unordered array", testAssert, ["a", "b"], new Array("b", "a"), "values should be equal", true);
+				doTest("collection", testAssert, document.querySelectorAll("head, body"), document.querySelectorAll("head, body"), "values should be equal");
+				doTest("unordered collection", testAssert, {0: document.head, 1:document.body, length: 2}, {0: document.body, 1:document.head, length: 2}, "values should be equal", true);
+				doTest("object", testAssert, {1:1}, {"1": 1}, "values should be equal");
+				doTest("date", testAssert, new Date("2025-03-15"), new Date(Date.UTC(2025, 2, 15)), "values should be equal");
+				doTest("NodeList", testAssert, document.querySelectorAll("body"), document.querySelectorAll("body"), "values should be equal");
+
+				doTest("undefined vs null", testAssertNot, undefined, null, "values should not be equal");
+				doTest("undefined vs empty", testAssertNot, undefined, "", "values should not be equal");
+				doTest("null vs false", testAssertNot, null, false, "values should not be equal");
+				doTest("NaN vs number", testAssertNot, NaN, 0, "values should not be equal");
+				doTest("number vs number", testAssertNot, 1, new Number(1.1), "values should not be equal");
+				doTest("number vs string", testAssertNot, 1, "1", "values should not be equal");
+				doTest("string vs string", testAssertNot, "a", new String("b"), "values should not be equal");
+				doTest("array vs array", testAssertNot, ["a", "b"], new Array("b", "a"), "values should not be equal");
+				doTest("collection vs collection", testAssertNot, document.querySelectorAll("head, body"), {0: document.body, 1:document.head, length: 2}, "values should not be equal");
+				doTest("object vs object", testAssertNot, {1:1}, {"1": "1"}, "values should not be equal");
+				doTest("date vs date", testAssertNot, new Date("2025-03-15"), new Date(Date.UTC(2025, 2, 16)), "values should not be equal");
+				doTest("Node collection", testAssertNot, document.querySelectorAll("body"), document.getElementsByTagName("body"), "values should not be equal");
+			}
+
+			function testTypeOf() {
+				testedFeature = "typeOf";
+
+				const testedProperties = {};
+				for(k of Object.keys(typeOf(""))) {
+					testedProperties[k] = false;
+				}
+
+				function testProperty(step, test, assertValues, assertTrue) {
+					const typeInfo = typeOf(test);
+					assertTrue.forEach(property => assertValues[property] = true);
+					Object.entries(typeInfo).filter(([property, propValue]) => property === "v" || propValue).forEach(([property, propValue]) => {
+						testedProperties[property] = true;
+						testAssert(step, propValue, assertValues[property], "unexpected value for property <'" + property + "'>");
+						delete assertValues[property];
+					});
+					Object.entries(assertValues).forEach(([property, assertValue]) => {
+						testAssert(step, typeInfo[property], assertValue, "unexpected value for property <'" + property + "'>");
+					});
+				}
+
+				function testFunction(step, test, func, expression, expected) {
+					const result = typeOf(test)[func](expression);
+					testedProperties[func] = true;
+					testAssert(step, result, expected, "unexpected value for property <'" + func + "'>");
+				}
+
+				doTest("undefined", testProperty, undefined, {v: undefined, type: "unset", emptyOrType: "empty" }, ["undefined", "unset", "empty"]);
+				doTest("null", testProperty, null, {v: null, type: "unset", emptyOrType: "empty" }, ["null", "unset", "empty"]);
+				doTest("false", testProperty, false, {v: false, type: "boolean", emptyOrType: "boolean" }, ["boolean", "set", "filled"]);
+				doTest("true", testProperty, true, {v: true, type: "boolean", emptyOrType: "boolean" }, ["boolean", "set", "filled"]);
+				doTest("Boolean false", testProperty, new Boolean(false), {v: new Boolean(false), type: "boolean", emptyOrType: "boolean" }, ["boolean", "Boolean", "Object", "set", "filled", "anyObject"]);
+				doTest("Boolean true", testProperty, new Boolean(true), {v: new Boolean("true"), type: "boolean", emptyOrType: "boolean" }, ["boolean", "Boolean", "Object", "set", "filled", "anyObject"]);
+				doTest("0", testProperty, 0, {v: 0, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "set", "filled"]);
+				doTest("1", testProperty, 1, {v: 1, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "set", "filled"]);
+				doTest("NaN", testProperty, Number("a"), {v: NaN, type: "NaN", emptyOrType: "NaN" }, ["NaN", "anyNumber", "set", "filled"]);
+				doTest("Number 0", testProperty, new Number("0"), {v: 0, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "Number", "Object", "set", "filled", "anyObject"]);
+				doTest("Number 1", testProperty, new Number("1.0"), {v: 1, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "Number", "Object", "set", "filled", "anyObject"]);
+				doTest("Number NaN", testProperty, new Number("a"), {v: NaN, type: "NaN", emptyOrType: "NaN" }, ["NaN", "anyNumber", "Number", "Object", "set", "filled", "anyObject"]);
+				doTest("empty string", testProperty, "", {v: "", type: "string", emptyOrType: "empty" }, ["string", "set", "empty"]);
+				doTest("a", testProperty, "a", {v: "a", type: "string", emptyOrType: "string" }, ["string", "set", "filled"]);
+				doTest("String empty", testProperty, new String(""), {v: "", type: "string", emptyOrType: "empty" }, ["string", "String", "Object", "set", "empty", "anyObject"]);
+				doTest("String a", testProperty, new String("a"), {v: "a", type: "string", emptyOrType: "string" }, ["string", "String", "Object", "set", "filled", "anyObject"]);
+				doTest("empty array", testProperty, [], {v: [], type: "array", emptyOrType: "empty" }, ["array", "collection", "spreadableCollection", "Array", "Object", "set", "empty", "anyObject"]);
+				doTest("[1]", testProperty, [1], {v: [1], type: "array", emptyOrType: "array" }, ["array", "collection", "spreadableCollection", "Array", "Object", "set", "filled", "anyObject"]);
+				doTest("Array a", testProperty, new Array("a"), {v: ["a"], type: "array", emptyOrType: "array" }, ["array", "collection", "spreadableCollection", "Array", "Object", "set", "filled", "anyObject"]);
+				doTest("empty collection", testProperty, document.querySelectorAll(".noClass"), {v: document.querySelectorAll("noClass"), type: "NodeList", emptyOrType: "empty" }, ["object", "collection", "spreadableCollection", "NodeList", "Object", "set", "empty", "anyObject"]);
+				doTest("filled collection", testProperty, document.querySelectorAll("body"), {v: document.querySelectorAll("body"), type: "NodeList", emptyOrType: "NodeList" }, ["object", "collection", "spreadableCollection", "NodeList", "Object", "set", "filled", "anyObject"]);
+				doTest("unspreadable collection", testProperty, {0:1, 1:"b", length:2}, {v: {"0":1, "1":"b", length:2}, type: "Object", emptyOrType: "Object" }, ["object", "Object", "collection", "set", "filled", "anyObject"]);
+				doTest("empty Object", testProperty, {}, {v: {}, type: "Object", emptyOrType: "empty" }, ["object", "Object", "set", "empty", "anyObject"]);
+				doTest("filled Object", testProperty, {1:1}, {v: {"1":1}, type: "Object", emptyOrType: "Object" }, ["object", "Object", "set", "filled", "anyObject"]);
+
+				const arrowFunc = () => "", anonymousFunc = function() {}, namedFunc = async function named() {}, constructedFunc = new Function("x", "return x"), methodFunc = {async method() {}};
+				doTest("arrowFunc", testProperty, arrowFunc, {v: arrowFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
+				doTest("anonymousFunc", testProperty, anonymousFunc, {v: anonymousFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
+				doTest("namedFunc", testProperty, namedFunc, {v: namedFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
+				doTest("constructedFunc", testProperty, constructedFunc, {v: constructedFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
+				doTest("methodFunc", testProperty, methodFunc.method, {v: methodFunc.method, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
+
+				doTest("apply", testFunction, 1, "apply", (t, v) => t.anyNumber && v, 1);
+
+				doTest("switch no match", testFunction, "", "switch", {array: "empty", function: "empty"}, undefined);
+				doTest("switch match", testFunction, "", "switch", {empty: "empty", string: "string"}, "empty");
+				doTest("switch match order", testFunction, "", "switch", {string: "string", empty: "empty"}, "string");
+				doTest("switch default", testFunction, "def", "switch", (v) => ({default: v}), "def");
+
+				doTest("applySwitch no match", testFunction, "", "applySwitch", {array: () => "empty"}, undefined);
+				doTest("applySwitch match", testFunction, "", "applySwitch", {empty: (v) => v}, "");
+				doTest("applySwitch default", testFunction, "", "applySwitch", (v) => ({default: (vv) => v === vv}), true);
+
+				doTest("smartSwitch simple match", testFunction, "", "smartSwitch", {string: "string"}, "string");
+				doTest("smartSwitch function match", testFunction, "", "smartSwitch", {empty: (v) => v}, "");
+				doTest("smartSwitch default", testFunction, "", "smartSwitch", (v) => ({default: (vv) => testedProperties.default = (v === vv)}), true);
+
+				Object.entries(testedProperties).filter(([,reached]) => !reached).forEach(([property]) => {
+					doTest(property, testAssert, false, true, "property <'" + property + "'> not reached");
+				});
+			}
+
+			async function testReadParams() {
+				testedFeature = "readParameters";
+
+				const CUR = 0, OLD = 1, PARAMS = 2, CB = 3, ANY = "&", RESULT = "&result&";
+				let step, error, expectedResults, transformResults, calledBack;
+				function genericCallback(callbackFunction, curVal, oldVal, params, fromResult) {
+					const [target, tgt, p, cbTarget] = fromResult ? ["result", "res", RESULT, RESULT] : [callbackFunction.name, "cb", params, callbackFunction];
+					params.filter(p => !calledBack[p] || !calledBack[p].includes(cbTarget)).forEach(p => (calledBack[p] ?? (calledBack[p] = [])).push(cbTarget));
+
+					redoTest(step + "-" + tgt, (s) => {
+						curVal = transformResults?.(curVal, target, true) ?? curVal;
+						oldVal = transformResults?.(oldVal, target, false) ?? oldVal;
+						testAssert(s, params, getExpected(PARAMS, params, cbTarget), "[" + target + "] unexpected params value", true);
+						testAssert(s, curVal, getExpected(CUR, params, cbTarget), "[" + target + "] unexpected current value");
+						testAssert(s, oldVal, getExpected(OLD, params, cbTarget), "[" + target + "] unexpected previous value");
+					});
+				};
+				const defaultCallback = (...args) => genericCallback(defaultCallback, ...args), specificCallback = (...args) => genericCallback(specificCallback, ...args);
+
+				function getExpected(part, params = ANY, cbTarget) {
+					return typeOf(expectedResults).applySwitch({
+						unset: (r) => params === ANY ? {ANY: part === CB ? [r] : r} : r,
+						array: (r) => {
+							if (Array.isArray(r[0])) {
+								const paramArray = Array.isArray(params) ? params : [params];
+								const targetR = params === ANY ? r : r.filter(a => a[CB].includes(cbTarget));
+								return params === ANY ? targetR.reduce((o, a) => (a[PARAMS].forEach(p => o[p] = (o[p] ?? []).concat(a[part])), o), {})
+									: ( targetR.find(a => equal(a, paramArray, true)) ?? targetR.find(a => a[PARAMS].some(p => paramArray.includes(p))) )?.[part];
+							} else {
+								return params === ANY ? r[PARAMS].reduce((o, p) => (o[p] = r[part], o), {}) : (r[CB].includes(cbTarget) ? r[part] : undefined);
+							}
+						},
+					});
+				}
+
+				function urlHash(...params) {
+					params.forEach(p => url.hashParam(p, paramValues.get(p, true)));
+					return url;
+				}
+
+				function newURL(newUrl) {
+					return async () => {
+						location.href = newUrl.href;
+						await sleep(10);
+					}
+				}
+
+				function readParamsNewURL(newUrl, ...params) {
+					return async () => {
+						location.href = newUrl.href;
+						await sleep(10);
+						return readParameters(...params);
+					}
+				}
+
+				function readParams(...params) {
+					return () => readParameters(...params);
+				}
+
+				async function readParamsResult(stepName, actual, expected) {
+					step = stepName;
+					calledBack = {};
+
+					expectedResults = expected;
+					if (typeOf(actual).function) {
+						actual = await actual();
+					}
+					const expectedCBMap = getExpected(CB);
+					// ensure that all expected callbacks have been reached
+					let resultChecked = false;
+					Object.entries(expectedCBMap).forEach(([param, expectedCallbacks]) => {
+						expectedCallbacks.forEach(expectedCb => {
+							if (expectedCb === RESULT) {
+								testAssertNot(step, actual, undefined, "[result] unexpected unset current result");
+								defaultCallback(...actual, true);
+								resultChecked = true;
+							} else {
+								testAssert(step, calledBack[param]?.find(cb => cb === expectedCb), expectedCb, "unexpected called back function for parameter <'"+param+"'>");
+							}
+						});
+					});
+					// ensure that all reached callbacks were expected
+					Object.entries(calledBack).forEach(([param, reachedCallbacks]) => {
+						testAssert(step, reachedCallbacks, expectedCBMap[param], "unexpected reached called back function for parameter <'"+param+"'>", true);
+					});
+
+					if (!resultChecked) {
+						testAssert(step, actual, undefined, "[result] unexpected current result");
+					}
+				}
+
+				const url = new URL(location.href), cleanURL = () => new URL(location.href);
+				const specificSteps = url.queryParamArray("specificSteps");
+
+				const paramValues = {
+					get(param, forUrl) { return this[param] ? param + "-" + this[param] : (forUrl ? null : undefined); },
+					incr(param) { return param + "-" + (this[param] = (this[param] ?? 0) + 1); },
+					prev(param) { return this[param] - 1 ? param + "-" + (this[param] - 1) : undefined; },
+					unset(param) { return (this[param] = 0, undefined); },
+					val(param, val, forUrl) { return val ? param + "-" + val : (forUrl ? null : undefined) },
+				};
+
+				const allSteps = {
+					main: {
+						"global callback": async (s, doFunc) => await doFunc(s, readParamsResult, readParams(defaultCallback)),
+						"unknown field": async (s, doFunc) => await doFunc(s, readParamsResult, readParams({params: "field"}), [,,["field"], [RESULT]]),
+						"add source": async (s, doFunc) => {
+							try {
+								readParametersSettings().addSource({ after: "*", sourceName: "value", valueGetter: (p) => document.body.dataset[p] });
+							} catch (e) {
+								testAssert(s+".0", e.message, "value is a reserved keyword and cannot be used as source name.", "addSource reserved keyword");
+							}
+
+							readParametersSettings().addSource({ after: "*", sourceName: "bodyDS", valueGetter: (p) => document.body.dataset[p] });
+							await redoTest(s+".0", testAssert, readParametersSettings().from.bodyDS, true, "default settings with added source");
+
+							let expected = [,,["data"], [RESULT]];
+							await redoTest(s+".1", readParamsResult, readParams("data"), expected);
+
+							document.body.dataset.data = "data-val";
+							expected = ["data-val", undefined, ["data"], [RESULT]];
+							await redoTest(s+".2", readParamsResult, readParams({params: "data", callback: null}), expected);
+
+							document.body.dataset.data = "data-val2";
+							readParametersSettings().notifySourceValueChanged("bodyDS");
+							expected = ["data-val2", "data-val", ["data"], [RESULT]];
+							await doFunc(s, readParamsResult, readParams("data"), expected);
+
+							// disable source
+							delete readParametersSettings().from.bodyDS;
+							expected = [undefined, "data-val2", ["data"], [RESULT]];
+							await redoTest(s+".3", readParamsResult, readParams("data"), expected);
+						},
+						"add source with event": async (s, doFunc) => {
+							const triggerEvent = new Event("triggered"), otherEvent = new Event("other"), PARAM = "trig";
+
+							function fireEvent(target, event, value, ...params) {
+								return async () => {
+									event.data = value;
+									target.dispatchEvent(event);
+									await sleep(10);
+									if (params.length) {
+										return readParameters(...params);
+									}
+								}
+							}
+
+							readParametersSettings(PARAM).addSource({ sourceName: "triggered", valueGetter: (p, c, event) => event.data, eventName: "triggered", eventTarget: document.body });
+
+							await redoTest(s+".0", testAssert, readParametersSettings().from.triggered, undefined, "default settings with triggered source");
+							await redoTest(s+".0", testAssert, readParametersSettings(PARAM).from.triggered, true, PARAM + " settings with triggered source");
+
+							let expected = [,,[PARAM], [RESULT]];
+							await redoTest(s+".1", readParamsResult, readParams(PARAM, specificCallback), expected);
+
+							expected = ["trig-1", undefined, [PARAM], [specificCallback]];
+							await redoTest(s+".2", readParamsResult, fireEvent(document.body, triggerEvent, "trig-1"), expected);
+
+							// wrong event
+							await redoTest(s+".3", readParamsResult, fireEvent(document.body, otherEvent, "trig-2"), undefined);
+
+							// wrong target
+							await redoTest(s+".4", readParamsResult, fireEvent(document.head, triggerEvent, "trig-2"), undefined);
+
+							expected = [
+								["trig-2", "trig-1", [PARAM], [specificCallback]],
+								["trig-2", "trig-2", [PARAM], [RESULT]],
+							];
+							await doFunc(s, readParamsResult, fireEvent(document.body, triggerEvent, "trig-2", PARAM), expected);
+
+							// disable source
+							delete readParametersSettings(PARAM).from.triggered;
+							expected = [undefined, "trig-2", [PARAM], [specificCallback]];
+							await redoTest(s+".5", readParamsResult, fireEvent(document.body, triggerEvent, "trig-3"), expected);
+						},
+						"_queryTest": (s) => createSubTest(cleanURL().queryParam("specificSteps", "query").queryParam("field", paramValues.incr("field")).queryParam("field1", paramValues.incr("field1")).href, testParams.testStep, "testReadParams"),
+						"_hashTests": (s) => createSubTest(cleanURL().queryParam("specificSteps", "hash").hashParam("field", paramValues.get("field")).href, testParams.testStep, "testReadParams"),
+						"_priorityTests": (s) => createSubTest(cleanURL().queryParam("specificSteps", "priority").queryParam("field", paramValues.get("field")).hashParam("field", paramValues.incr("field")).queryParam("field1", paramValues.get("field1")).href, testParams.testStep, "testReadParams"),
+					},
+					query: {
+						"default+specific+result": {
+							depends: ["global callback"],
+							f: async (s, doFunc) => {
+								let expected = [
+									[{"field": paramValues.incr("field")}, {"field": paramValues.prev("field")}, ["field"], [defaultCallback]],
+									[paramValues.get("field"), paramValues.prev("field"), ["field"], [RESULT]],
+								];
+								await redoTest(s+".1", readParamsResult, readParams("field"), expected);
+
+								expected = [paramValues.incr("field1"), paramValues.prev("field1"), ["field1"], [specificCallback, RESULT]]
+								await doFunc(s, readParamsResult, readParams("field1", specificCallback), expected);
+							}
+						},
+					},
+					hash: {
+						"default+result": {
+							depends: ["global callback"],
+							f: async (s, doFunc) => {
+								const expected = [
+									[{"field": paramValues.incr("field")}, {"field": paramValues.prev("field")}, ["field"], [defaultCallback]],
+									[paramValues.get("field"), paramValues.prev("field"), ["field"], [RESULT]],
+								];
+								await doFunc(s, readParamsResult, readParams("field"), expected);
+							}
+						},
+						"specific+result": async (s, doFunc) => {
+							let expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]]
+							await redoTest(s, readParamsResult, readParams("field", specificCallback), expected);
+							expected = [
+								[paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback]],
+								[paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]]
+							];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("field"), "field", specificCallback), expected);
+						},
+						"specific only": async (s, doFunc) => {
+							const expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback]];
+							await doFunc(s, readParamsResult, newURL(urlHash("field")), expected);
+						},
+						"specific with 2 params": async (s, doFunc) => {
+							const expected = [
+								[{"field2": paramValues.incr("field2")}, {field2: paramValues.prev("field2")}, ["field2"], [specificCallback]],
+								[paramValues.get("field2"), paramValues.prev("field2"), ["field2"], [RESULT]],
+							];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("field2"), "field2", specificCallback), expected);
+						},
+						"unset param": async (s, doFunc) => {
+							const prev = paramValues.get("field2"), expected = [
+								[{"field2": paramValues.unset("field2")}, {field2: prev}, ["field2"], [specificCallback]],
+								[paramValues.get("field2"), paramValues.get("field2"), ["field2"], [RESULT]],
+							];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("field2"), "field2"), expected);
+						},
+						"useReturnValue": async (s, doFunc) => {
+							await redoTest(s, readParamsResult, readParams({useReturnValue: true}));
+							const expected = [paramValues.incr("defField2"), paramValues.prev("defField2"), ["defField2"], [RESULT]];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("defField2"), "defField2"), expected);
+							readParametersSettings().useReturnValue = false;
+						},
+						"mapResult true": async (s, doFunc) => {
+							await redoTest(s, readParamsResult, readParams({mapResult: true}));
+							const expected = [{defField: paramValues.incr("defField")}, {defField: paramValues.prev("defField")}, ["defField"], [defaultCallback, RESULT]];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("defField"), "defField"), expected);
+						},
+						"inherited mapResult true": async (s, doFunc) => {
+							const expected = [{field: paramValues.incr("field")}, {field: paramValues.prev("field")}, ["field"], [specificCallback]];
+							await doFunc(s, readParamsResult, newURL(urlHash("field")), expected);
+						},
+						"mapResult false": async (s, doFunc) => {
+							await redoTest(s, readParamsResult, readParams({mapResult: false}));
+							const expected = [
+								[paramValues.incr("defField"), paramValues.prev("defField"), ["defField"], [defaultCallback]],
+								[paramValues.get("defField"), paramValues.get("defField"), ["defField"], [RESULT]]
+							];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("defField"), "defField"), expected);
+						},
+						"inherited mapResult false": async (s, doFunc) => {
+							const expected = [paramValues.incr("field2"), paramValues.prev("field2"), ["field2"], [specificCallback]];
+							await doFunc(s, readParamsResult, newURL(urlHash("field2")), expected);
+						},
+						"specific mapResult": async (s, doFunc) => {
+							await redoTest(s+".1", readParamsResult, readParams({mapResult: undefined}));
+							await redoTest(s+".2", readParamsResult, readParams({mapResult: false}, specificCallback));
+
+							let expected = [{defField: paramValues.incr("defField")}, {defField: paramValues.prev("defField")}, ["defField"], [defaultCallback]];
+							await redoTest(s+".3", readParamsResult, newURL(urlHash("defField")), expected);
+
+							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback]]
+							await redoTest(s+".4", readParamsResult, newURL(urlHash("field")), expected);
+
+							expected = [paramValues.incr("field2"), paramValues.prev("field2"), ["field2"], [specificCallback]]
+							await redoTest(s+".5", readParamsResult, newURL(urlHash("field2")), expected);
+
+							expected = [
+								[paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback]],
+								[
+									{field: paramValues.get("field"), field2: paramValues.get("field2"), defField: paramValues.get("defField")},
+									{field: paramValues.get("field"), field2: paramValues.get("field2"), defField: paramValues.get("defField")},
+									["field", "field2", "defField"],
+									[RESULT]
+								]
+							];
+							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("field"), "defField", "field", "field2"), expected);
+
+							expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
+							await redoTest(s+".6", readParamsResult, readParams({params: "field", mapResult: null}), expected);
+
+							expected = [{"field2": paramValues.incr("field2")}, {field2: paramValues.prev("field2")}, ["field2"], [specificCallback]];
+							await redoTest(s+".7", readParamsResult, newURL(urlHash("field2")), expected);
+						},
+						"resultBySource": async (s, doFunc) => {
+							const checkAndRemoveLastModified = (res, target, isCurVal) => {
+								res = structuredClone(res);
+								// retrieve flat or nested entries
+								const entries = ("forcedValue" in res) ? Object.entries(res) : Object.values(res).flatMap(r => Object.entries(r));
+								entries.filter(([k, v]) => v && !["value", "forcedValue"].includes(k)).forEach(([k,v]) => {
+									try {
+										testAssertNot(step, v.lastModified, undefined, "[" +target+ "] attribute <'lastModified'> should be present for source <'"+k+"'> of " + (isCurVal ? "current value" : "old value"));
+										delete v.lastModified;
+										delete v.notified;
+									} catch (e) {
+										console.error("value in error: " + objectToString(res));
+										throw e;
+									}
+								});
+								return res;
+							};
+							transformResults = checkAndRemoveLastModified;
+							await redoTest(s+".1", readParamsResult, readParams({mapResult: false, resultBySource: true}));
+							let expected = [
+								{"value":paramValues.incr("defField"),"forcedValue":paramValues.get("defField"),"hashChanged":{"value":paramValues.prev("defField")},"hash":{"value":paramValues.prev("defField")},"query":undefined},
+								{"value":paramValues.prev("defField"),"forcedValue":undefined,"hashChanged":{"value":paramValues.prev("defField")},"hash":{"value":paramValues.prev("defField")},"query":undefined},
+								["defField"],
+								[defaultCallback, RESULT]
+							];
+							await redoTest(s+".2", readParamsResult, readParams({params: "defField", toggle: paramValues.get("defField")}), expected);
+
+							expected = [
+								{"value":paramValues.incr("field"),"forcedValue":undefined,"hashChanged":{"value":paramValues.get("field")},"hash":{"value":paramValues.get("field")},"query":undefined},
+								{"value":paramValues.prev("field"),"forcedValue":undefined,"hashChanged":{"value":paramValues.prev("field")},"hash":{"value":paramValues.prev("field")},"query":undefined},
+								["field"],
+								[specificCallback]
+							];
+							await redoTest(s+".3", readParamsResult, newURL(urlHash("field")), expected);
+
+							await redoTest(s+".4", readParamsResult, readParams({mapResult: undefined, resultBySource: false}));
+							await redoTest(s+".4", readParamsResult, readParams({resultBySource: true, callback: specificCallback}));
+
+							transformResults = undefined;
+							expected = [paramValues.get("defField"), paramValues.get("defField"), ["defField"], [RESULT]];
+							await redoTest(s+".4", readParamsResult, readParams({params: "defField"}), expected);
+
+							transformResults = checkAndRemoveLastModified;
+							expected = [
+								{field: {"value":paramValues.incr("field"),"forcedValue":undefined,"hashChanged":{"value":paramValues.get("field")},"hash":{"value":paramValues.get("field")},"query":undefined}},
+								{field: {"value":paramValues.prev("field"),"forcedValue":undefined,"hashChanged":{"value":paramValues.prev("field")},"hash":{"value":paramValues.prev("field")},"query":undefined}},
+								["field"],
+								[specificCallback]
+							];
+							await doFunc(s, readParamsResult, newURL(urlHash("field")), expected);
+
+							transformResults = undefined;
+							expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
+							await redoTest(s+".5", readParamsResult, readParams({params: "field", resultBySource: null}), expected);
+						},
+						"rename params": async (s, doFunc) => {
+							let expected = [{"field3": paramValues.incr("field3"), "field4": paramValues.incr("field4")}, {field3: paramValues.prev("field3"), field4: paramValues.prev("field4")}, ["field3", "field4"], [specificCallback, RESULT]];
+							await redoTest(s+".0", readParamsResult, readParamsNewURL(urlHash("field3", "field4"), {mapResult: false}, "field3", "field4", specificCallback), expected);
+
+							await redoTest(s+".1", readParamsResult, readParams({renameParams: {"field3": "field4"}}));
+							expected = [paramValues.incr("field4"), paramValues.prev("field4"), ["field4"], [specificCallback]];
+							paramValues.incr("field3");
+							await redoTest(s+".2", readParamsResult, newURL(urlHash("field3", "field4")), expected);
+
+							expected = [paramValues.get("field3"), paramValues.get("field4"), ["field3"], [specificCallback, RESULT]];
+							await doFunc(s, readParamsResult, readParams({renameParams: "field4", params: "field3"}), expected);
+
+							paramValues.unset("field4");
+							await redoTest(s+".3", readParamsResult, newURL(urlHash("field4")), undefined);
+
+							// reset mapResult
+							await redoTest(s+".4", readParamsResult, readParams({mapResult: null}, specificCallback));
+						},
+						"remove params": async (s, doFunc) => {
+							let expected = [{"field3": paramValues.incr("field3")}, {field3: paramValues.prev("field3")}, ["field3"], [specificCallback]];
+							await redoTest(s+".0", readParamsResult, newURL(urlHash("field3")), expected);
+
+							await doFunc(s, readParamsResult, readParams({removeParams: "field3"}), undefined);
+
+							paramValues.incr("field3");
+							await redoTest(s+".1", readParamsResult, newURL(urlHash("field3")), undefined);
+						},
+						"toggle value": async (s, doFunc) => {
+							let expected = ["forced", undefined, ["tField"], [specificCallback, RESULT]];
+							await doFunc(s, readParamsResult, readParams({toggle: "forced", mapResult: false}, "tField", specificCallback), expected);
+
+							expected = [paramValues.incr("tField"), "forced", ["tField"], [specificCallback]];
+							await redoTest(s+".1", readParamsResult, newURL(urlHash("tField")), expected);
+
+							expected = [paramValues.get("tField"), paramValues.get("tField"), ["tField"], [RESULT]];
+							await redoTest(s+".2", readParamsResult, readParams({params: ["tField"], toggle: paramValues.get("tField")}), expected);
+
+							expected = [
+								[{tField: undefined}, {tField: paramValues.get("tField")}, ["tField"], [specificCallback]],
+								[undefined, paramValues.get("tField"), ["tField"], [RESULT]]
+							];
+							await redoTest(s+".3", readParamsResult, readParams({params: ["tField"], toggle: null, mapResult: null}), expected);
+						},
+						"possible values": async (s, doFunc) => {
+							await redoTest(s+".0", readParamsResult, readParams({removeParams: "tField"}), undefined);
+
+							const vals = ["value A", "value B", "value C"];
+							let expected = [vals[0], undefined, ["tField"], [defaultCallback, RESULT]];
+							await doFunc(s, readParamsResult, readParams({toggle: true, mapResult: false, possibleValues: vals}, "tField"), expected);
+
+							expected = [vals[2], vals[0], ["tField"], [defaultCallback]];
+							await redoTest(s+".1", readParamsResult, newURL(url.hashParam("tField", vals[2])), expected);
+
+							expected = [vals[0], vals[2], ["tField"], [defaultCallback, RESULT]];
+							await redoTest(s+".2", readParamsResult, readParams({toggle: true, params:"tField"}), expected);
+
+							// same value
+							expected = [vals[0], vals[0], ["tField"], [RESULT]];
+							await redoTest(s+".3", readParamsResult, readParams({toggle: vals[0], params:"tField"}), expected);
+
+							// wrong value
+							expected = [vals[0], vals[0], ["tField"], [RESULT]];
+							await redoTest(s+".4", readParamsResult, readParams({toggle: "wrong value", params:"tField"}), expected);
+
+							// unset value
+							expected = [undefined, vals[0], ["tField"], [defaultCallback, RESULT]];
+							await redoTest(s+".5", readParamsResult, readParams({toggle: null, params:"tField"}), expected);
+
+							expected = [vals[0], undefined, ["tField"], [defaultCallback, RESULT]];
+							await redoTest(s+".6-1", readParamsResult, readParams({toggle: true, params:"tField"}), expected);
+							expected = [vals[1], vals[0], ["tField"], [defaultCallback, RESULT]];
+							await redoTest(s+".6-2", readParamsResult, readParams({toggle: true, params:"tField"}), expected);
+
+							// ensure defField is not impacted
+							expected = [paramValues.incr("defField"), paramValues.prev("defField"), ["defField"], [defaultCallback]];
+							await redoTest(s+".def", readParamsResult, newURL(urlHash("defField")), expected)
+						},
+						"possible values, 2 params": async (s, doFunc) => {
+							const vals = ["valA", "valB"], vals2 = ["valA-2", "valB-2"];
+							let expected = [{tField: vals[0], tField2: vals[1]}, {tField: "value B", tField2: undefined}, ["tField", "tField2"], [specificCallback, RESULT]];
+							await doFunc(s, readParamsResult, readParams({mapResult: null, params:["tField", "tField2"], toggle:{tField: true, tField2: vals[1]}, possibleValues: vals, callback: specificCallback}), expected);
+
+							vals.push("valC");
+							expected = [{tField: vals[1], tField2: vals[2]}, {tField: vals[0], tField2: vals[1]}, ["tField", "tField2"], [specificCallback, RESULT]];
+							await redoTest(s+".1", readParamsResult, readParams({params:["tField", "tField2"], toggle: true}), expected);
+
+							expected = [vals[2], vals[1], ["tField"], [specificCallback, RESULT]];
+							await redoTest(s+".2", readParamsResult, readParams({params:["tField"], toggle: true}), expected);
+
+							expected = [vals[0], vals[2], ["tField"], [specificCallback, RESULT]];
+							await redoTest(s+".3", readParamsResult, readParams({params:["tField"], toggle: {tField: true, tField2: vals[0]}}), expected);
+
+							expected = [{tField: vals[1], tField2: vals[1]}, {tField: vals[0], tField2: vals[2]}, ["tField", "tField2"], [specificCallback, RESULT]];
+							await redoTest(s+".4", readParamsResult, readParams({params:["tField", "tField2"], toggle: vals[1]}), expected);
+
+							// different arrays
+							expected = [vals2[1], vals[1], ["tField2"], [specificCallback, RESULT]];
+							await redoTest(s+".5", readParamsResult, readParams({params:["tField2"], toggle: vals2[1], possibleValues: vals2}), expected);
+
+							expected = [{tField: vals[2], tField2: vals2[0]}, {tField: vals[1], tField2: vals2[1]}, ["tField", "tField2"], [specificCallback, RESULT]];
+							await redoTest(s+".6", readParamsResult, readParams({params:["tField", "tField2"], toggle: true}), expected);
+
+							readParametersSettings().mapResult = undefined;
+
+							expected = [
+								[{tField: vals[1]}, {tField: vals[2]}, ["tField"], [specificCallback]],
+								[{tField: vals[1], tField2: vals2[0]}, {tField: vals[2], tField2: vals2[0]}, ["tField", "tField2"], [RESULT]]
+							];
+							await redoTest(s+".7", readParamsResult, readParams({params:["tField", "tField2"], toggle: vals[1]}), expected);
+
+							expected = [{tField: undefined}, {tField: vals[1]}, ["tField"], [specificCallback]];
+							await redoTest(s+".8", readParamsResult, newURL(url.hashParam("tField", null)), expected);
+						},
+						"local storage": async (s, doFunc) => {
+							readParametersSettings().mapResult = false;
+							window.localStorage.removeItem("tests.prefix.field");
+
+							let expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
+							await redoTest(s+".0", readParamsResult, readParams({params: "field", storagePrefix: "tests.prefix."}), expected);
+
+							await redoTest(s+".1", testAssert, window.localStorage.getItem("tests.prefix.field"), paramValues.get("field"), "localStorage should be saved");
+
+							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback, RESULT]];
+							window.localStorage.setItem("tests.prefix.field", paramValues.get("field"));
+							await doFunc(s, readParamsResult, readParams({params: "field"}), expected);
+
+							const prev = paramValues.get("field");
+							expected = [paramValues.unset("field"), prev, ["field"], [specificCallback]];
+							await redoTest(s+".2", readParamsResult, newURL(urlHash("field")), expected);
+
+							await redoTest(s+".3", testAssert, window.localStorage.getItem("tests.prefix.field"), paramValues.get("field", true), "localStorage should be unset");
+						},
+						"local storage no saving": async (s, doFunc) => {
+							readParametersSettings().mapResult = false;
+							window.localStorage.removeItem("tests.prefix2.field");
+
+							let expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
+							await redoTest(s+".0", readParamsResult, readParams({params: "field", storagePrefix: "tests.prefix2", saveStorage: false}), expected);
+
+							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback, RESULT]];
+							window.localStorage.setItem("tests.prefix2.field", paramValues.get("field"));
+							await doFunc(s, readParamsResult, readParams({params: "field"}), expected);
+
+							window.localStorage.removeItem("tests.prefix2.field");
+
+							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [specificCallback]];
+							await redoTest(s+".1", readParamsResult, newURL(urlHash("field")), expected);
+
+							await redoTest(s+".2", testAssert, window.localStorage.getItem("tests.prefix2.field"), null, "localStorage should be unset");
+						},
+					},
+					priority: {
+						"query": {
+							depends: ["global callback"],
+							f: async (s, doFunc) => {
+								let expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [defaultCallback, RESULT]];
+								await doFunc(s, readParamsResult, readParams({priority: ["query"], mapResult: false}, "field"), expected);
+
+								expected = [paramValues.incr("field1"), paramValues.prev("field1"), ["field1"], [specificCallback, RESULT]]
+								await redoTest(s+".1", readParamsResult, readParams("field1", specificCallback), expected);
+
+								await redoTest(s+".2", testAssert, readParametersSettings("field1").priority, ["hash", "query", "storage"], "field1 settings priority");
+							}
+						},
+						"+ local storage": async (s, doFunc) => {
+							let expected = [{"field": paramValues.get("field"), field1: paramValues.get("field1")}, {"field": paramValues.get("field"), field1: paramValues.get("field1")}, ["field", "field1"], [RESULT]];
+							await redoTest(s+".0", readParamsResult, readParams({storagePrefix: "tests.prefix"}, "field", "field1"), expected);
+
+							await redoTest(s+".1A", testAssert, window.localStorage.getItem("tests.prefix.field"), paramValues.get("field"), "localStorage should be saved");
+							await redoTest(s+".1B", testAssert, window.localStorage.getItem("tests.prefix.field1"), paramValues.get("field1"), "localStorage should be saved");
+
+							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [defaultCallback, RESULT]];
+							window.localStorage.setItem("tests.prefix.field", paramValues.get("field"));
+							await doFunc(s, readParamsResult, readParams({priority: ["query", "storage"], saveStorage: false}, "field"), expected);
+
+							expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
+							await redoTest(s+".2", readParamsResult, readParams({priority: ["storage", "query"], saveStorage: false}, "field"), expected);
+
+							expected = [paramValues.val("field", 1), paramValues.get("field"), ["field"], [defaultCallback, RESULT]];
+							await redoTest(s+".3", readParamsResult, readParams({priority: ["query", "storage"], saveStorage: false}, "field"), expected);
+						},
+						"+ hash": async (s, doFunc) => {
+							let expected = [paramValues.get("field"), paramValues.val("field", 1), ["field"], [defaultCallback, RESULT]];
+							await redoTest(s+".0", readParamsResult, readParams({priority: null}, "field"), expected);
+
+							await redoTest(s+".1", testAssert, readParametersSettings("field").priority, ["hash", "query", "storage"], "field settings priority");
+
+							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [defaultCallback]];
+							await doFunc(s, readParamsResult, newURL(urlHash("field")), expected);
+
+							expected = [paramValues.val("field", 1), paramValues.get("field"), ["field"], [defaultCallback, RESULT]];
+							await redoTest(s+".2", readParamsResult, readParams({priority: ["query", "storage", "hash"]}, "field"), expected);
+
+							expected = [paramValues.get("field"), paramValues.val("field", 1), ["field"], [defaultCallback, RESULT]];
+							await redoTest(s+".3", readParamsResult, readParams({priority: ["hash", "storage", "query"]}, "field"), expected);
+
+							expected = [paramValues.prev("field"), paramValues.get("field"), ["field"], [defaultCallback, RESULT]];
+							await redoTest(s+".4", readParamsResult, readParams({priority: ["storage", "hash", "query"]}, "field"), expected);
+						},
+						"- storage": async (s, doFunc) => {
+							const expected = [paramValues.get("field"), paramValues.prev("field"), ["field"], [defaultCallback, RESULT]];
+							window.localStorage.removeItem("tests.prefix.field");
+							await doFunc(s, readParamsResult, readParams("field"), expected);
+						},
+						"- hash": async (s, doFunc) => {
+							const expected = [paramValues.val("field", 1), paramValues.get("field"), ["field"], [defaultCallback]];
+							paramValues.unset("field");
+							await doFunc(s, readParamsResult, newURL(urlHash("field")), expected);
+						},
+					}
+				}
+
+				const steps = specificSteps.length ? {} : allSteps.main;
+				specificSteps.forEach(s => {
+					let [stepGroup, stepName] = s.split(".");
+					stepName = [undefined, "*"].includes(stepName) ? Object.keys(allSteps[stepGroup]) : [stepName];
+					stepName.forEach(subStep => steps[stepGroup + "." + subStep] = allSteps[stepGroup][subStep]);
+				});
+
+				for ([s, o] of Object.entries(steps)) {
+					const stepFunc = await typeOf(o).applySwitch({
+						function: (f) => f,
+						object: async ({depends, f}) => {
+							for (mainStep of depends ?? []) {
+								await allSteps.main[mainStep](s+"."+mainStep, redoTest);
+							}
+							return f;
+						}
+					});
+					transformResults = undefined;
+					await stepFunc(s, doTest);
+				}
+			}
+
+			async function main() {
+				await testEqual();
+				await testTypeOf();
+				await testReadParams();
+			}
+		</script>
+	</head>
+	<body>
+		<iframe id="subTestFrame" height="0" width="0" frameborder="0" border="0" cellspacing="0" />
+	</body>
+</html>
