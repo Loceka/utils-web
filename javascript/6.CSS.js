@@ -42,10 +42,6 @@
 	const themeSettings = { param: "theme", possibleValues: ["dark", "light"] };
 	const theme = {
 		firstCall: true,
-		cycleThemes() {
-			const length = themeSettings.possibleValues.length, i = themeSettings.possibleValues.indexOf(this.selectedTheme());
-			return themeSettings.possibleValues[(length + i + 1) % length];
-		},
 		selectedTheme() {
 			return document.documentElement.dataset[themeSettings.param];
 		},
@@ -55,6 +51,7 @@
 				if (theme !== this.selectedTheme()) {
 					document.documentElement.dataset[themeSettings.param] = theme;
 					themeSettings.callback?.(theme);
+					this.notifySourceValueChanged?.();
 				}
 			}
 		},
@@ -74,25 +71,22 @@
 				return;
 			}
 
+			const renameParams = themeSettings.param !== param ? themeSettings.param : undefined;
 			Object.assign(themeSettings, { param, callback, possibleValues });
 			sharedSettings = Object.assign(u.readParametersSettings(param), sharedSettings);
-			sharedSettings.params = param;
 			sharedSettings.possibleValues = possibleValues;
 			sharedSettings.callback = sharedSettings.callback ?? this.selectTheme.bind(this);
 
 			if (this.firstCall) {
 				this.firstCall = false;
 				const matchDarkScheme = window.matchMedia?.("(prefers-color-scheme: dark)");
-				sharedSettings.addSource({ sourceName: "fromDataset", valueGetter: this.selectedTheme.bind(this) });
-				sharedSettings.addSource({ sourceName: "fromScheme", valueGetter: (p, c, event) => event.matches ? "dark" : "light", eventName: "change", eventTarget: matchDarkScheme });
+				sharedSettings.addSource({ after: "*", sourceName: "dataset", valueGetter: this.selectedTheme.bind(this) });
+				sharedSettings.addSource({ sourceName: "scheme", valueGetter: (p, c, event) => event.matches ? "dark" : "light", eventName: "change", eventTarget: matchDarkScheme });
+				this.notifySourceValueChanged = sharedSettings.notifySourceValueChanged.bind(null, "dataset");
 				this.selectTheme(matchDarkScheme);
 			}
 
-			if (toggle) {
-				this.selectTheme(toggle === true ? this.cycleThemes() : possibleValues.find(v => v === toggle));
-			}
-
-			return u.readParameters(sharedSettings);
+			return u.readParameters({ params: param, renameParams, toggle, ...sharedSettings });
 		},
 	};
 
