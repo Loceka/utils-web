@@ -43,11 +43,11 @@
 		SortOrder: class {
 			static #SORT_PROTO = {
 				set(property, value) { this[property] = value; return this; },
-				clone(force) { return (this.cloned && !force) ? this : Object.setPrototypeOf({type: this.type, compare: this.compare, cloned: true}, Object.getPrototypeOf(this)); },
+				clone(force) { return (this.cloned && !force) ? this : Object.assign(Object.create(Object.getPrototypeOf(this)), {type: this.type, compare: this.compare, cloned: true}); },
 				rename(newType) { return this.clone(true).set("type", newType); },
 				disable(value) { return this.clone().set("disabled", value !== false); },
 			};
-			static SortMethod(method) { Object.setPrototypeOf(method, this.#SORT_PROTO); return method; }
+			static SortMethod(method) { return Object.assign(Object.create(this.#SORT_PROTO), method); }
 
 			static STRING = this.SortMethod({ type: "string", compare: (a, b) => String(a)?.localeCompare(String(b), this.lang) ?? (b ? 1 : 0) });
 			static BOOLEAN = this.SortMethod({ type: "boolean", compare: (a, b) => (Boolean(a) ? 0 : 1) - (Boolean(b) ? 0 : 1) });
