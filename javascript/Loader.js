@@ -27,8 +27,31 @@
  *     it may also be wise to create a junction (symbolic link) to the "utils" directory at the start of the drive.
  */
 const _jsUtilsLoader = ((varName = document?.currentScript?.dataset?.var, loadScripts = document?.currentScript?.dataset?.load) => {
+	// Adds "atPath" and "setAtPath" to objects
 	Object.prototype.atPath = function(path, defVal) { return String(path ?? "").split(/(?<!\\)\./).reduce((o, p) => o?.[p.replace(/\\\./g, ".")], this) ?? defVal; };
 	Object.prototype.setAtPath = function(path, value) { return String(path ?? "").split(/(?<!\\)\./).reduce((o, p, i, a) => (p = p.replace(/\\\./g, "."), (o[p] = (i === a.length - 1) ? value : o[p] ?? {}), o[p]), this); };
+
+	// Adds "queryParam", "hashParam", "queryParamArray" and "hashParamArray" to URL
+	function param(target, toArray) {
+		return function (k, v, append = false) {
+			const params = new URLSearchParams(this[target].substring(1));
+			if (v === undefined) {
+				return toArray ? params.getAll(k).flatMap(v => v?.split(",")) : params.get(k);
+			}
+			if (Array.isArray(v)) {
+				if (!append) params.delete(k);
+				v.forEach(val => params.append(k, val));
+			} else {
+				params[v === null ? "delete" : append ? "append" : "set"](k, v === null ? undefined : v);
+			}
+			this[target] = (target === "hash" ? "#" : "?") + params.toString();
+			return this;
+		}
+	}
+	URL.prototype.queryParam = param("search");
+	URL.prototype.hashParam = param("hash");
+	URL.prototype.queryParamArray = param("search", true);
+	URL.prototype.hashParamArray = param("hash", true);
 
 	const unsetVarName = varName === undefined || varName === null;
 	const curScript = unsetVarName ? this : (varName ? (typeof varName === "object" ? varName : this.atPath(varName, {})) : {});
