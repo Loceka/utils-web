@@ -123,10 +123,10 @@
 			method = method.toUpperCase();
 			let useSearch = method === "GET" || method === "DELETE";
 
-			return new Promise(function(resolve, reject) {
+			return new Promise((resolve, reject) => {
 				console.log("ajax " + method + " request at " + url);
 				let xhr = new XMLHttpRequest();
-				xhr.open(method, url + (useSearch && data ? (url.indexOf("?") === -1 ? "?" : "&") + toPHPSearchParams(data) : ""));
+				xhr.open(method, url + (useSearch && data ? (url.indexOf("?") === -1 ? "?" : "&") + this.toPHPSearchParams(data) : ""));
 				xhr.onload = function(event) {
 					if (xhr.status >= 200 && xhr.status < 300) {
 						try {
