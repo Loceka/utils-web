@@ -51,9 +51,11 @@
 					testedProperties[k] = false;
 				}
 
-				function testProperty(step, test, assertValues, assertTrue) {
+				function testProperty(step, test, assertValues, assertTrue, assertExtend) {
 					const typeInfo = typeOf(test);
+					assertValues.extend = {}
 					assertTrue.forEach(property => assertValues[property] = true);
+					assertExtend?.forEach(c => assertValues.extend[c] = true);
 					Object.entries(typeInfo).filter(([property, propValue]) => property === "v" || propValue).forEach(([property, propValue]) => {
 						testedProperties[property] = true;
 						testAssert(step, propValue, assertValues[property], "unexpected value for property <'" + property + "'>");
@@ -70,37 +72,37 @@
 					testAssert(step, result, expected, "unexpected value for property <'" + func + "'>");
 				}
 
-				doTest("undefined", testProperty, undefined, {v: undefined, type: "unset", emptyOrType: "empty" }, ["undefined", "unset", "empty"]);
-				doTest("null", testProperty, null, {v: null, type: "unset", emptyOrType: "empty" }, ["null", "unset", "empty"]);
-				doTest("false", testProperty, false, {v: false, type: "boolean", emptyOrType: "boolean" }, ["boolean", "set", "filled"]);
-				doTest("true", testProperty, true, {v: true, type: "boolean", emptyOrType: "boolean" }, ["boolean", "set", "filled"]);
-				doTest("Boolean false", testProperty, new Boolean(false), {v: new Boolean(false), type: "boolean", emptyOrType: "boolean" }, ["boolean", "Boolean", "Object", "set", "filled", "anyObject"]);
-				doTest("Boolean true", testProperty, new Boolean(true), {v: new Boolean("true"), type: "boolean", emptyOrType: "boolean" }, ["boolean", "Boolean", "Object", "set", "filled", "anyObject"]);
-				doTest("0", testProperty, 0, {v: 0, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "set", "filled"]);
-				doTest("1", testProperty, 1, {v: 1, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "set", "filled"]);
-				doTest("NaN", testProperty, Number("a"), {v: NaN, type: "NaN", emptyOrType: "NaN" }, ["NaN", "anyNumber", "set", "filled"]);
-				doTest("Number 0", testProperty, new Number("0"), {v: 0, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "Number", "Object", "set", "filled", "anyObject"]);
-				doTest("Number 1", testProperty, new Number("1.0"), {v: 1, type: "number", emptyOrType: "number" }, ["number", "anyNumber", "Number", "Object", "set", "filled", "anyObject"]);
-				doTest("Number NaN", testProperty, new Number("a"), {v: NaN, type: "NaN", emptyOrType: "NaN" }, ["NaN", "anyNumber", "Number", "Object", "set", "filled", "anyObject"]);
-				doTest("empty string", testProperty, "", {v: "", type: "string", emptyOrType: "empty" }, ["string", "set", "empty"]);
-				doTest("a", testProperty, "a", {v: "a", type: "string", emptyOrType: "string" }, ["string", "set", "filled"]);
-				doTest("String empty", testProperty, new String(""), {v: "", type: "string", emptyOrType: "empty" }, ["string", "String", "Object", "set", "empty", "anyObject"]);
-				doTest("String a", testProperty, new String("a"), {v: "a", type: "string", emptyOrType: "string" }, ["string", "String", "Object", "set", "filled", "anyObject"]);
-				doTest("empty array", testProperty, [], {v: [], type: "array", emptyOrType: "empty" }, ["array", "collection", "spreadableCollection", "Array", "Object", "set", "empty", "anyObject"]);
-				doTest("[1]", testProperty, [1], {v: [1], type: "array", emptyOrType: "array" }, ["array", "collection", "spreadableCollection", "Array", "Object", "set", "filled", "anyObject"]);
-				doTest("Array a", testProperty, new Array("a"), {v: ["a"], type: "array", emptyOrType: "array" }, ["array", "collection", "spreadableCollection", "Array", "Object", "set", "filled", "anyObject"]);
-				doTest("empty collection", testProperty, document.querySelectorAll(".noClass"), {v: document.querySelectorAll("noClass"), type: "NodeList", emptyOrType: "empty" }, ["object", "collection", "spreadableCollection", "NodeList", "Object", "set", "empty", "anyObject"]);
-				doTest("filled collection", testProperty, document.querySelectorAll("body"), {v: document.querySelectorAll("body"), type: "NodeList", emptyOrType: "NodeList" }, ["object", "collection", "spreadableCollection", "NodeList", "Object", "set", "filled", "anyObject"]);
-				doTest("unspreadable collection", testProperty, {0:1, 1:"b", length:2}, {v: {"0":1, "1":"b", length:2}, type: "Object", emptyOrType: "Object" }, ["object", "Object", "collection", "set", "filled", "anyObject"]);
-				doTest("empty Object", testProperty, {}, {v: {}, type: "Object", emptyOrType: "empty" }, ["object", "Object", "set", "empty", "anyObject"]);
-				doTest("filled Object", testProperty, {1:1}, {v: {"1":1}, type: "Object", emptyOrType: "Object" }, ["object", "Object", "set", "filled", "anyObject"]);
+				doTest("undefined", testProperty, undefined, {v: undefined, type: "unset", realType: "unset", emptyOrType: "empty", emptyOrRealType: "empty" }, ["undefined", "unset", "empty"]);
+				doTest("null", testProperty, null, {v: null, type: "unset", realType: "unset", emptyOrType: "empty", emptyOrRealType: "empty" }, ["null", "unset", "empty"]);
+				doTest("false", testProperty, false, {v: false, type: "boolean", realType: "boolean", emptyOrType: "boolean", emptyOrRealType: "boolean" }, ["boolean", "set", "filled"]);
+				doTest("true", testProperty, true, {v: true, type: "boolean", realType: "boolean", emptyOrType: "boolean", emptyOrRealType: "boolean" }, ["boolean", "set", "filled"]);
+				doTest("Boolean false", testProperty, new Boolean(false), {v: new Boolean(false), type: "boolean", realType: "boolean", emptyOrType: "boolean", emptyOrRealType: "boolean" }, ["boolean", "set", "filled", "anyObject"], ["Boolean", "Object"]);
+				doTest("Boolean true", testProperty, new Boolean(true), {v: new Boolean("true"), type: "boolean", realType: "boolean", emptyOrType: "boolean", emptyOrRealType: "boolean" }, ["boolean", "set", "filled", "anyObject"], ["Boolean", "Object"]);
+				doTest("0", testProperty, 0, {v: 0, type: "number", realType: "number", emptyOrType: "number", emptyOrRealType: "number" }, ["number", "anyNumber", "set", "filled"]);
+				doTest("1", testProperty, 1, {v: 1, type: "number", realType: "number", emptyOrType: "number", emptyOrRealType: "number" }, ["number", "anyNumber", "set", "filled"]);
+				doTest("NaN", testProperty, Number("a"), {v: NaN, type: "NaN", realType: "NaN", emptyOrType: "NaN", emptyOrRealType: "NaN" }, ["NaN", "anyNumber", "set", "filled"]);
+				doTest("Number 0", testProperty, new Number("0"), {v: 0, type: "number", realType: "number", emptyOrType: "number", emptyOrRealType: "number" }, ["number", "anyNumber", "set", "filled", "anyObject"], ["Number", "Object"]);
+				doTest("Number 1", testProperty, new Number("1.0"), {v: 1, type: "number", realType: "number", emptyOrType: "number", emptyOrRealType: "number" }, ["number", "anyNumber", "set", "filled", "anyObject"], ["Number", "Object"]);
+				doTest("Number NaN", testProperty, new Number("a"), {v: NaN, type: "NaN", realType: "NaN", emptyOrType: "NaN", emptyOrRealType: "NaN" }, ["NaN", "anyNumber", "set", "filled", "anyObject"], ["Number", "Object"]);
+				doTest("empty string", testProperty, "", {v: "", type: "string", realType: "string", emptyOrType: "empty", emptyOrRealType: "empty" }, ["string", "set", "empty"]);
+				doTest("a", testProperty, "a", {v: "a", type: "string", realType: "string", emptyOrType: "string", emptyOrRealType: "string" }, ["string", "set", "filled"]);
+				doTest("String empty", testProperty, new String(""), {v: "", type: "string", realType: "string", emptyOrType: "empty", emptyOrRealType: "empty" }, ["string", "set", "empty", "anyObject"], ["String", "Object"]);
+				doTest("String a", testProperty, new String("a"), {v: "a", type: "string", realType: "string", emptyOrType: "string", emptyOrRealType: "string" }, ["string", "set", "filled", "anyObject"], ["String", "Object"]);
+				doTest("empty array", testProperty, [], {v: [], type: "array", realType: "array", emptyOrType: "empty", emptyOrRealType: "empty" }, ["array", "collection", "spreadableCollection", "set", "empty", "anyObject"], ["Array", "Object"]);
+				doTest("[1]", testProperty, [1], {v: [1], type: "array", realType: "array", emptyOrType: "array", emptyOrRealType: "array" }, ["array", "collection", "spreadableCollection", "set", "filled", "anyObject"], ["Array", "Object"]);
+				doTest("Array a", testProperty, new Array("a"), {v: ["a"], type: "array", realType: "array", emptyOrType: "array", emptyOrRealType: "array" }, ["array", "collection", "spreadableCollection", "set", "filled", "anyObject"], ["Array", "Object"]);
+				doTest("empty collection", testProperty, document.querySelectorAll(".noClass"), {v: document.querySelectorAll("noClass"), type: "object", realType: "NodeList", emptyOrType: "empty", emptyOrRealType: "empty" }, ["object", "collection", "spreadableCollection", "set", "empty", "anyObject"], ["NodeList", "Object"]);
+				doTest("filled collection", testProperty, document.querySelectorAll("body"), {v: document.querySelectorAll("body"), type: "object", realType: "NodeList", emptyOrType: "object", emptyOrRealType: "NodeList" }, ["object", "collection", "spreadableCollection", "set", "filled", "anyObject"], ["NodeList", "Object"]);
+				doTest("unspreadable collection", testProperty, {0:1, 1:"b", length:2}, {v: {"0":1, "1":"b", length:2}, type: "object", realType: "Object", emptyOrType: "object", emptyOrRealType: "Object" }, ["object", "collection", "set", "filled", "anyObject"], ["Object"]);
+				doTest("empty Object", testProperty, {}, {v: {}, type: "object", realType: "Object", emptyOrType: "empty", emptyOrRealType: "empty" }, ["object", "set", "empty", "anyObject"], ["Object"]);
+				doTest("filled Object", testProperty, {1:1}, {v: {"1":1}, type: "object", realType: "Object", emptyOrType: "object", emptyOrRealType: "Object" }, ["object", "set", "filled", "anyObject"], ["Object"]);
 
 				const arrowFunc = () => "", anonymousFunc = function() {}, namedFunc = async function named() {}, constructedFunc = new Function("x", "return x"), methodFunc = {async method() {}};
-				doTest("arrowFunc", testProperty, arrowFunc, {v: arrowFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
-				doTest("anonymousFunc", testProperty, anonymousFunc, {v: anonymousFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
-				doTest("namedFunc", testProperty, namedFunc, {v: namedFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
-				doTest("constructedFunc", testProperty, constructedFunc, {v: constructedFunc, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
-				doTest("methodFunc", testProperty, methodFunc.method, {v: methodFunc.method, type: "function", emptyOrType: "function" }, ["function", "set", "filled"]);
+				doTest("arrowFunc", testProperty, arrowFunc, {v: arrowFunc, type: "function", realType: "function", emptyOrType: "function", emptyOrRealType: "function" }, ["function", "set", "filled"]);
+				doTest("anonymousFunc", testProperty, anonymousFunc, {v: anonymousFunc, type: "function", realType: "function", emptyOrType: "function", emptyOrRealType: "function" }, ["function", "set", "filled"]);
+				doTest("namedFunc", testProperty, namedFunc, {v: namedFunc, type: "function", realType: "function", emptyOrType: "function", emptyOrRealType: "function" }, ["function", "set", "filled"]);
+				doTest("constructedFunc", testProperty, constructedFunc, {v: constructedFunc, type: "function", realType: "function", emptyOrType: "function", emptyOrRealType: "function" }, ["function", "set", "filled"]);
+				doTest("methodFunc", testProperty, methodFunc.method, {v: methodFunc.method, type: "function", realType: "function", emptyOrType: "function", emptyOrRealType: "function" }, ["function", "set", "filled"]);
 
 				doTest("apply", testFunction, 1, "apply", (t, v) => t.anyNumber && v, 1);
 
@@ -119,6 +121,30 @@
 
 				Object.entries(testedProperties).filter(([,reached]) => !reached).forEach(([property]) => {
 					doTest(property, testAssert, false, true, "property <'" + property + "'> not reached");
+				});
+			}
+
+			function testMinMax() {
+				testedFeature = "minMax";
+				
+				const funcs = ["min", "max"];
+				const defVals = [-5, undefined, 5];
+				const tests = [
+					{name: "undefined", a: undefined, def: defVals, min: (d) => d ?? 0, max: (d) => d ?? 0},
+					{name: "empty", a: [], def: defVals, min: (d) => d ?? 0, max: (d) => d ?? 0},
+					{name: "values", a: [-10, -1, 0, 2, 7], min: () => -10, max: () => 7},
+					{name: "object values", a: [{id:-10}, {id:-1}, {id:0}, {id:2}, {id:7}], acc: o => o.id, min: () => -10, max: () => 7},
+				];
+				funcs.forEach(f => {
+					tests.forEach(t => {
+						if (t.def) {
+							t.def.forEach(def => {
+								doTest(`${f} [default: ${def}]: ${t.name}`, testAssert, util[f](t.a, t.acc, def), t[f](def), `unexpected ${f} value`);
+							});
+						} else {
+							doTest(`${f}: ${t.name}`, testAssert, util[f](t.a, t.acc), t[f](), `unexpected ${f} value`);
+						}
+					});
 				});
 			}
 
@@ -703,6 +729,7 @@
 			async function main() {
 				await testEqual();
 				await testTypeOf();
+				await testMinMax();
 				await testReadParams();
 			}
 		</script>

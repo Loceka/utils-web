@@ -439,20 +439,22 @@
 			type.filled = !type.empty;
 
 			const allowedTypes = ["unset", "boolean", "number", "NaN", "string", "array", "function", "object"];
-			type.type = Object.entries(type).find(([typeName, ofType]) => ofType && allowedTypes.includes(typeName))[0];
+			type.type = type.realType = Object.entries(type).find(([typeName, ofType]) => ofType && allowedTypes.includes(typeName))[0];
+			type.extend = {};
 			if (type.anyObject) {
-				listClasses(v).forEach((clazz, i) => { (i === 0 && type.type === "object") && (type.type = clazz); type[clazz] = true});
+				listClasses(v).forEach((clazz, i) => { (i === 0 && type.realType === "object") && (type.realType = clazz); type.extend[clazz] = true});
 			}
 			type.emptyOrType = type.empty ? "empty" : type.type;
+			type.emptyOrRealType = type.empty ? "empty" : type.realType;
 
 			return Object.freeze(type);
 		},
 		listClasses,
-		equal(o1, o2, unordered) {
+		equal(o1, o2, unordered, typeProp = "realType") {
 			let same = o1 === o2 || (o1?.valueOf() !== undefined && o1?.valueOf() === o2?.valueOf());
 			if(!same) {
 				const t1 = this.typeOf(o1), t2 = this.typeOf(o2);
-				if (t1.type === t2.type) {
+				if (t1[typeProp] === t2[typeProp]) {
 					same = t1.smartSwitch({
 						NaN: true,
 						boolean: false,
@@ -470,6 +472,8 @@
 			}
 			return same ?? false;
 		},
+		min(list, accessor = n => n, defVal = 0) { const r = list?.reduce((m, val) => (val = accessor(val), val < m ? val : m), +Infinity) ?? defVal; return r === +Infinity ? defVal : r; },
+		max(list, accessor = n => n, defVal = 0) { const r = list?.reduce((m, val) => (val = accessor(val), val > m ? val : m), -Infinity) ?? defVal; return r === -Infinity ? defVal : r; },
 		partial(fn, thisObj) {
 			const curriedArgs = Array.prototype.slice.call(arguments, 2);
 			const curriedArgsCount = curriedArgs.length;
