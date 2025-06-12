@@ -229,7 +229,7 @@
 			const {valuesMap: curValuesMap, oldValue, filteredPriorities, priorityChanged} = this.valueMapPrototype.from(oldValuesMap, settings, eventSourceName, event);
 
 			curValuesMap.forcedValue = forcedValue;
-			forcedValue = typeOf(forcedValue === false ? undefined : forcedValue = 0 ? "0" : forcedValue).empty ? forcedValue : this.valueOf(param, forcedValue, true, oldValue);
+			forcedValue = curScript.typeOf(forcedValue === false ? undefined : forcedValue = 0 ? "0" : forcedValue).empty ? forcedValue : this.valueOf(param, forcedValue, true, oldValue);
 			let modifiedValue = forcedValue, modifiedSources = [], paramValue;
 			if (forcedValue === undefined) {
 				context.settings = settings;

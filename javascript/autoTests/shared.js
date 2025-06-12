@@ -46,7 +46,7 @@ async function genericTest(main, catchErrors, step, test, ...args) {
 			throw e;
 		}
 	}
-	
+
 }
 
 const doTest = genericTest.bind(null, true, true);
@@ -62,8 +62,12 @@ function testAssertNot(step, actual, expected, message, unordered) {
 	return testAssert(step, actual, expected, message, unordered, true);
 }
 
-function testAssert(step, actual, expected, message, unordered, assertNotEqual) {
-	if (assertNotEqual ? util.equal(actual, expected, unordered) : !util.equal(actual, expected, unordered)) {
+function testAssertUsingType(step, actual, expected, message, unordered) {
+	return testAssert(step, actual, expected, message, unordered, false, "type");
+}
+
+function testAssert(step, actual, expected, message, unordered, assertNotEqual, typeProp) {
+	if (assertNotEqual ? util.equal(actual, expected, unordered, typeProp) : !util.equal(actual, expected, unordered, typeProp)) {
 		console.error([testParams.testStep, testedFeature, step].filter(s => s).join(".") + " => actual:", actual, ", expected:", expected);
 		[actual, expected] = [actual, expected].map(objectToString);
 		testResult(step, {actual, expected: (assertNotEqual ? "not " : "") + expected, message: message.replace(/<([^>]+)>/, "<code>$1</code>")});

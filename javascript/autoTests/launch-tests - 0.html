@@ -5,8 +5,8 @@
 		<title></title>
 		<link rel="stylesheet" href="tests.css" />
 		<script type="text/javascript" src="shared.js"></script>
-		<script type="text/javascript" src="/utils/javascript/0.type_assign.js" data-var="util"></script>
-		<script type="text/javascript" src="/utils/javascript/Loader.js" data-load="0"></script>
+		<!--script type="text/javascript" src="/utils/javascript/0.type_assign.js" data-var="util"></script-->
+		<script type="text/javascript" src="/utils/javascript/Loader.js" data-load="0" data-var="util"></script>
 		<!--
 		<script type="text/javascript" src="/utils/javascript/Loader.js" data-load="4"></script>
 		<script type="text/javascript" data-drive="/I:">if (typeof _jsUtilsLoader === "undefined") document.write(document.querySelector("script[data-load]")?.outerHTML.replace(/(?<=src=(["']))(?:\/\w:(?=\/))?([^\1]+)/, document.currentScript.dataset.drive + "$2"));</script>
@@ -28,6 +28,7 @@
 				doTest("object", testAssert, {1:1}, {"1": 1}, "values should be equal");
 				doTest("date", testAssert, new Date("2025-03-15"), new Date(Date.UTC(2025, 2, 15)), "values should be equal");
 				doTest("NodeList", testAssert, document.querySelectorAll("body"), document.querySelectorAll("body"), "values should be equal");
+				doTest("Node collection using type", testAssertUsingType, document.querySelectorAll("body"), document.getElementsByTagName("body"), "values should be equal");
 
 				doTest("undefined vs null", testAssertNot, undefined, null, "values should not be equal");
 				doTest("undefined vs empty", testAssertNot, undefined, "", "values should not be equal");
@@ -47,12 +48,12 @@
 				testedFeature = "typeOf";
 
 				const testedProperties = {};
-				for(k of Object.keys(typeOf(""))) {
+				for(k of Object.keys(util.typeOf(""))) {
 					testedProperties[k] = false;
 				}
 
 				function testProperty(step, test, assertValues, assertTrue, assertExtend) {
-					const typeInfo = typeOf(test);
+					const typeInfo = util.typeOf(test);
 					assertValues.extend = {}
 					assertTrue.forEach(property => assertValues[property] = true);
 					assertExtend?.forEach(c => assertValues.extend[c] = true);
@@ -67,7 +68,7 @@
 				}
 
 				function testFunction(step, test, func, expression, expected) {
-					const result = typeOf(test)[func](expression);
+					const result = util.typeOf(test)[func](expression);
 					testedProperties[func] = true;
 					testAssert(step, result, expected, "unexpected value for property <'" + func + "'>");
 				}
@@ -168,14 +169,14 @@
 				const defaultCallback = (...args) => genericCallback(defaultCallback, ...args), specificCallback = (...args) => genericCallback(specificCallback, ...args);
 
 				function getExpected(part, params = ANY, cbTarget) {
-					return typeOf(expectedResults).applySwitch({
+					return util.typeOf(expectedResults).applySwitch({
 						unset: (r) => params === ANY ? {ANY: part === CB ? [r] : r} : r,
 						array: (r) => {
 							if (Array.isArray(r[0])) {
 								const paramArray = Array.isArray(params) ? params : [params];
 								const targetR = params === ANY ? r : r.filter(a => a[CB].includes(cbTarget));
 								return params === ANY ? targetR.reduce((o, a) => (a[PARAMS].forEach(p => o[p] = (o[p] ?? []).concat(a[part])), o), {})
-									: ( targetR.find(a => equal(a, paramArray, true)) ?? targetR.find(a => a[PARAMS].some(p => paramArray.includes(p))) )?.[part];
+									: ( targetR.find(a => util.equal(a, paramArray, true)) ?? targetR.find(a => a[PARAMS].some(p => paramArray.includes(p))) )?.[part];
 							} else {
 								return params === ANY ? r[PARAMS].reduce((o, p) => (o[p] = r[part], o), {}) : (r[CB].includes(cbTarget) ? r[part] : undefined);
 							}
@@ -199,12 +200,12 @@
 					return async () => {
 						location.href = newUrl.href;
 						await sleep(10);
-						return readParameters(...params);
+						return util.readParameters(...params);
 					}
 				}
 
 				function readParams(...params) {
-					return () => readParameters(...params);
+					return () => util.readParameters(...params);
 				}
 
 				async function readParamsResult(stepName, actual, expected) {
@@ -212,7 +213,7 @@
 					calledBack = {};
 
 					expectedResults = expected;
-					if (typeOf(actual).function) {
+					if (util.typeOf(actual).function) {
 						actual = await actual();
 					}
 					const expectedCBMap = getExpected(CB);
@@ -256,13 +257,13 @@
 						"unknown field": async (s, doFunc) => await doFunc(s, readParamsResult, readParams({params: "field"}), [,,["field"], [RESULT]]),
 						"add source": async (s, doFunc) => {
 							try {
-								readParametersSettings().addSource({ after: "*", sourceName: "value", valueGetter: (p) => document.body.dataset[p] });
+								util.readParametersSettings().addSource({ after: "*", sourceName: "value", valueGetter: (p) => document.body.dataset[p] });
 							} catch (e) {
 								testAssert(s+".0", e.message, "value is a reserved keyword and cannot be used as source name.", "addSource reserved keyword");
 							}
 
-							readParametersSettings().addSource({ after: "*", sourceName: "bodyDS", valueGetter: (p) => document.body.dataset[p] });
-							await redoTest(s+".0", testAssert, readParametersSettings().from.bodyDS, true, "default settings with added source");
+							util.readParametersSettings().addSource({ after: "*", sourceName: "bodyDS", valueGetter: (p) => document.body.dataset[p] });
+							await redoTest(s+".0", testAssert, util.readParametersSettings().from.bodyDS, true, "default settings with added source");
 
 							let expected = [,,["data"], [RESULT]];
 							await redoTest(s+".1", readParamsResult, readParams("data"), expected);
@@ -272,12 +273,12 @@
 							await redoTest(s+".2", readParamsResult, readParams({params: "data", callback: null}), expected);
 
 							document.body.dataset.data = "data-val2";
-							readParametersSettings().notifySourceValueChanged("bodyDS");
+							util.readParametersSettings().notifySourceValueChanged("bodyDS");
 							expected = ["data-val2", "data-val", ["data"], [RESULT]];
 							await doFunc(s, readParamsResult, readParams("data"), expected);
 
 							// disable source
-							delete readParametersSettings().from.bodyDS;
+							delete util.readParametersSettings().from.bodyDS;
 							expected = [undefined, "data-val2", ["data"], [RESULT]];
 							await redoTest(s+".3", readParamsResult, readParams("data"), expected);
 						},
@@ -290,15 +291,15 @@
 									target.dispatchEvent(event);
 									await sleep(10);
 									if (params.length) {
-										return readParameters(...params);
+										return util.readParameters(...params);
 									}
 								}
 							}
 
-							readParametersSettings(PARAM).addSource({ sourceName: "triggered", valueGetter: (p, c, event) => event.data, eventName: "triggered", eventTarget: document.body });
+							util.readParametersSettings(PARAM).addSource({ sourceName: "triggered", valueGetter: (p, c, event) => event.data, eventName: "triggered", eventTarget: document.body });
 
-							await redoTest(s+".0", testAssert, readParametersSettings().from.triggered, undefined, "default settings with triggered source");
-							await redoTest(s+".0", testAssert, readParametersSettings(PARAM).from.triggered, true, PARAM + " settings with triggered source");
+							await redoTest(s+".0", testAssert, util.readParametersSettings().from.triggered, undefined, "default settings with triggered source");
+							await redoTest(s+".0", testAssert, util.readParametersSettings(PARAM).from.triggered, true, PARAM + " settings with triggered source");
 
 							let expected = [,,[PARAM], [RESULT]];
 							await redoTest(s+".1", readParamsResult, readParams(PARAM, specificCallback), expected);
@@ -319,7 +320,7 @@
 							await doFunc(s, readParamsResult, fireEvent(document.body, triggerEvent, "trig-2", PARAM), expected);
 
 							// disable source
-							delete readParametersSettings(PARAM).from.triggered;
+							delete util.readParametersSettings(PARAM).from.triggered;
 							expected = [undefined, "trig-2", [PARAM], [specificCallback]];
 							await redoTest(s+".5", readParamsResult, fireEvent(document.body, triggerEvent, "trig-3"), expected);
 						},
@@ -384,7 +385,7 @@
 							await redoTest(s, readParamsResult, readParams({useReturnValue: true}));
 							const expected = [paramValues.incr("defField2"), paramValues.prev("defField2"), ["defField2"], [RESULT]];
 							await doFunc(s, readParamsResult, readParamsNewURL(urlHash("defField2"), "defField2"), expected);
-							readParametersSettings().useReturnValue = false;
+							util.readParametersSettings().useReturnValue = false;
 						},
 						"mapResult true": async (s, doFunc) => {
 							await redoTest(s, readParamsResult, readParams({mapResult: true}));
@@ -594,7 +595,7 @@
 							expected = [{tField: vals[2], tField2: vals2[0]}, {tField: vals[1], tField2: vals2[1]}, ["tField", "tField2"], [specificCallback, RESULT]];
 							await redoTest(s+".6", readParamsResult, readParams({params:["tField", "tField2"], toggle: true}), expected);
 
-							readParametersSettings().mapResult = undefined;
+							util.readParametersSettings().mapResult = undefined;
 
 							expected = [
 								[{tField: vals[1]}, {tField: vals[2]}, ["tField"], [specificCallback]],
@@ -606,7 +607,7 @@
 							await redoTest(s+".8", readParamsResult, newURL(url.hashParam("tField", null)), expected);
 						},
 						"local storage": async (s, doFunc) => {
-							readParametersSettings().mapResult = false;
+							util.readParametersSettings().mapResult = false;
 							window.localStorage.removeItem("tests.prefix.field");
 
 							let expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
@@ -625,7 +626,7 @@
 							await redoTest(s+".3", testAssert, window.localStorage.getItem("tests.prefix.field"), paramValues.get("field", true), "localStorage should be unset");
 						},
 						"local storage no saving": async (s, doFunc) => {
-							readParametersSettings().mapResult = false;
+							util.readParametersSettings().mapResult = false;
 							window.localStorage.removeItem("tests.prefix2.field");
 
 							let expected = [paramValues.get("field"), paramValues.get("field"), ["field"], [RESULT]];
@@ -653,7 +654,7 @@
 								expected = [paramValues.incr("field1"), paramValues.prev("field1"), ["field1"], [specificCallback, RESULT]]
 								await redoTest(s+".1", readParamsResult, readParams("field1", specificCallback), expected);
 
-								await redoTest(s+".2", testAssert, readParametersSettings("field1").priority, ["hash", "query", "storage"], "field1 settings priority");
+								await redoTest(s+".2", testAssert, util.readParametersSettings("field1").priority, ["hash", "query", "storage"], "field1 settings priority");
 							}
 						},
 						"+ local storage": async (s, doFunc) => {
@@ -677,7 +678,7 @@
 							let expected = [paramValues.get("field"), paramValues.val("field", 1), ["field"], [defaultCallback, RESULT]];
 							await redoTest(s+".0", readParamsResult, readParams({priority: null}, "field"), expected);
 
-							await redoTest(s+".1", testAssert, readParametersSettings("field").priority, ["hash", "query", "storage"], "field settings priority");
+							await redoTest(s+".1", testAssert, util.readParametersSettings("field").priority, ["hash", "query", "storage"], "field settings priority");
 
 							expected = [paramValues.incr("field"), paramValues.prev("field"), ["field"], [defaultCallback]];
 							await doFunc(s, readParamsResult, newURL(urlHash("field")), expected);
@@ -712,7 +713,7 @@
 				});
 
 				for ([s, o] of Object.entries(steps)) {
-					const stepFunc = await typeOf(o).applySwitch({
+					const stepFunc = await util.typeOf(o).applySwitch({
 						function: (f) => f,
 						object: async ({depends, f}) => {
 							for (mainStep of depends ?? []) {
